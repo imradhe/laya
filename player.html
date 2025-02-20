@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio & Text Alignment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { padding-bottom: 80px; }
+        .audio-player { position: fixed; bottom: 0; width: 100%; background: #f8f9fa; padding: 10px; }
+        .transcript-container { max-height: 70vh; overflow-y: auto; margin-top: 30px; padding-top: 20px; }
+        .active-line { background-color: #d1e7dd; border-radius: 50px; padding: 5px; }
+        .timestamp { font-family: monospace; min-width: 80px; display: inline-block; text-align: center; }
+        .list-group-item { border: none;}
+    </style>
+</head>
+<body>
+    <div class="container d-flex justify-content-center align-items-center mt-3">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="kandaSelect" class="form-label">Kanda</label>
+                <select id="kandaSelect" class="form-select" onchange="populateSarga()"></select>
+            </div>
+            <div class="col-md-4">
+                <label for="sargaSelect" class="form-label">Sarga</label>
+                <select id="sargaSelect" class="form-select"></select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-primary" onclick="loadAudioAndTranscript()">Load</button>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    <div class="container transcript-container">
+        <ul id="transcriptList" class="list-group"></ul>
+    </div>
+
+    <footer class="audio-player row d-flex justify-content-center">
+        <audio id="audioPlayer" class="col-11" controls>
+            <source id="audioSource" src="" style="min-width: 200px !important;" type="audio/mp3">
+        </audio>
+        <button class="col btn btn-success rounded-pill mx-2" onclick="downloadTranscript()"> <i class="bi bi-download"></i> Save</button>
+    </footer>
+
+    <script>
+        const KANDAS = { 1: 77, 2: 119, 3: 75, 4: 67, 5: 68, 6: 128 };
+        let transcriptData = {};
+        let timestamps = {}; // Store timestamps for each line
+        let activeIndex = -1;
+        let audioPlayer = document.getElementById("audioPlayer");
+
+        function populateKanda() {
+            let kandaSelect = document.getElementById("kandaSelect");
+            kandaSelect.innerHTML = '<option value="">Select Kanda</option>';
+            for (let kanda in KANDAS) {
+                let option = document.createElement("option");
+                option.value = kanda;
+                option.textContent = `Kanda ${kanda}`;
+                kandaSelect.appendChild(option);
+            }
+        }
+
+        function populateSarga() {
+            let sargaSelect = document.getElementById("sargaSelect");
+            sargaSelect.innerHTML = '<option value="">Select Sarga</option>';
+            let selectedKanda = document.getElementById("kandaSelect").value;
+            if (!selectedKanda) return;
+            let sargaCount = KANDAS[selectedKanda];
+            for (let i = 1; i <= sargaCount; i++) {
+                let option = document.createElement("option");
+                option.value = i;
+                option.textContent = `Sarga ${i}`;
+                sargaSelect.appendChild(option);
+            }
+        }
+
+        function loadCSV() { 
+            fetch("transcript.csv")
+                .then(response => response.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            processCSVData(results.data);
+                        }
+                    });
+                })
+                .catch(error => console.error("Error loading CSV:", error));
+        }
+
+
+        function processCSVData(data) {
+            transcriptData = {}; // Reset data
+            timestamps = {};
+
+            data.forEach(row => {
+                let kanda = String(row.Kanda).trim();
+                let sarga = String(row.Sarga).trim();
+                let sloka = String(row.Sloka).trim();
+
+                if (!transcriptData[kanda]) transcriptData[kanda] = {};
+                if (!transcriptData[kanda][sarga]) transcriptData[kanda][sarga] = [];
+
+                transcriptData[kanda][sarga].push(sloka);
+            });
+        }
+
+
+        function loadAudioAndTranscript() {
+            let kanda = document.getElementById("kandaSelect").value;
+            let sarga = document.getElementById("sargaSelect").value;
+            
+            console.log("Selected Kanda:", kanda, "Selected Sarga:", sarga);
+            
+            if (!kanda || !sarga) {
+                alert("Please select both Kanda and Sarga.");
+                return;
+            }
+
+            document.getElementById("audioSource").src = `new_audio/${kanda}/${sarga}.mp3`;
+            document.getElementById("audioPlayer").load();
+            loadTranscript();
+            
+            activeIndex = -1;
+            updateActiveLine(-1);
+
+            timestamps = {};
+            updateTimestampDisplay();
+        }
+
+
+        function loadTranscript() {
+            let kanda = String(document.getElementById("kandaSelect").value);
+            let sarga = String(document.getElementById("sargaSelect").value);
+            let list = document.getElementById("transcriptList");
+            list.innerHTML = "";
+
+
+            if (!transcriptData[kanda]) {
+                console.error(`No data found for Kanda: ${kanda}`);
+                return;
+            }
+            if (!transcriptData[kanda][sarga]) {
+                console.error(`No data found for Kanda ${kanda}, Sarga ${sarga}`);
+                return;
+            }
+
+            let lines = transcriptData[kanda][sarga];
+
+            lines.forEach((line, index) => {
+                timestamps[index] = timestamps[index] || null;
+                let listItem = document.createElement("li");
+                listItem.className = "list-group-item d-flex align-items-center justify-content-between";
+                listItem.innerHTML = `
+                    <a class="mx-2 fs-4 resetBtn" onclick="resetStartTime(${index})"><i class="bi bi-x"></i></a>
+                    <input readonly disabled type="text" class="timestamp form-control form-control-sm" style="width: 80px;" value="${timestamps[index] ? formatTime(timestamps[index]) : "--:--:--"}">
+                    <a class="mx-2 fs-4 minusBtn" onclick="adjustTimestamp(${index}, -250)"><i class="bi bi-dash"></i></a>
+                    <a class="mx-2 fs-4 plusBtn" onclick="adjustTimestamp(${index}, 250)"><i class="bi bi-plus"></i></>
+                    <a class="mx-2 fs-4 playBtn" onclick="playFromTimestamp(${index})"><i class="bi bi-play-circle-fill"></i></a>
+                    <input type="text" class="form-control mx-2" value="${line}">                
+                    <a class="mx-2 fs-4 deleteBtn" style="cursor: pointer;" onclick="deleteLine(${index})"><i class="bi bi-trash"></i></a>
+                    <a class="mx-2 fs-4 addBtn" style="cursor: pointer;" onclick="addLine(${index})"><i class="bi bi-plus-circle-fill"></i></a>
+                `;
+                list.appendChild(listItem);
+            });
+        }
+
+        function formatTime(ms) {
+            let minutes = Math.floor(ms / 60000).toString().padStart(2, "0");
+            let seconds = Math.floor((ms % 60000) / 1000).toString().padStart(2, "0");
+            let centiseconds = Math.floor((ms % 1000) / 10).toString().padStart(2, "0");
+            return `${minutes}:${seconds}:${centiseconds}`;
+        }
+
+        function adjustTimestamp(index, offset) {
+            if (index in timestamps) {
+            let newTime = timestamps[index] + offset;
+            if (newTime >= 0 && (index === 0 || newTime >= timestamps[index - 1]) && newTime <= audioPlayer.duration * 1000) {
+                timestamps[index] = newTime;
+                audioPlayer.currentTime = newTime / 1000;
+            }
+            }
+            updateTimestampDisplay();
+        }
+
+        function playFromTimestamp(index) {
+            if (timestamps[index] !== null) {
+                let audioPlayer = document.getElementById("audioPlayer");
+                audioPlayer.currentTime = timestamps[index] / 1000;
+                audioPlayer.play();
+            }
+        }
+
+
+        function resetStartTime(index) {
+            timestamps[index] = null;
+            updateActiveLine(index - 1);
+            updateTimestampDisplay();
+        }
+
+        function updateActiveLine(newIndex) {
+        let transcriptList = document.getElementById("transcriptList").children;
+        if (activeIndex >= 0 && activeIndex < transcriptList.length) {
+            transcriptList[activeIndex].classList.remove("active-line");
+        }
+        if (newIndex >= 0 && newIndex < transcriptList.length) {
+            transcriptList[newIndex].classList.add("active-line");
+            activeIndex = newIndex;
+        }
+        document.querySelector(".active-line")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+
+        document.addEventListener("keydown", function (event) {
+            switch (event.key) {
+            case " ":
+                if (event.shiftKey) {
+                event.preventDefault();
+                audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
+                }
+                break;
+            case "ArrowDown":
+                if (activeIndex < document.getElementById("transcriptList").children.length - 1) {
+                updateActiveLine(activeIndex + 1);
+                timestamps[activeIndex] = audioPlayer.currentTime * 1000;
+                }
+                break;
+            case "ArrowUp":
+                if (activeIndex > 0) {
+                timestamps[activeIndex] = null;
+                updateActiveLine(activeIndex - 1);
+                
+                }
+                else if(activeIndex == 0){
+                    timestamps[activeIndex] = null;
+                    updateActiveLine(activeIndex - 1);
+                    activeIndex = -1;
+                }
+                
+                break;
+            case "ArrowLeft":
+                if (activeIndex in timestamps) {
+                    let newTime = timestamps[activeIndex] - 250;
+                    if (newTime >= 0 && (activeIndex === 0 || newTime >= timestamps[activeIndex - 1])) {
+                        timestamps[activeIndex] = newTime;
+                        audioPlayer.currentTime = newTime / 1000;
+                    }
+                }
+                break;
+            case "ArrowRight":
+                if (activeIndex in timestamps) {
+                    let newTime = timestamps[activeIndex] + 250;
+                    if (newTime <= audioPlayer.duration * 1000) {
+                        timestamps[activeIndex] = newTime;
+                        audioPlayer.currentTime = newTime / 1000;
+                    }
+                }
+                break;
+            }
+            updateTimestampDisplay();
+        });
+
+        function updateTimestampDisplay() {
+            let transcriptList = document.getElementById("transcriptList").children;
+            for (let i = 0; i < transcriptList.length; i++) {
+            let timestampSpan = transcriptList[i].querySelector(".timestamp");
+            if (timestamps[i]) {
+                timestampSpan.value = formatTime(timestamps[i]);
+            } else {
+                timestampSpan.value = "--:--:--";
+            }
+            }
+        }
+
+        function downloadTranscript() {
+            let kanda = document.getElementById("kandaSelect").value;
+            let sarga = document.getElementById("sargaSelect").value;
+            if (!kanda || !sarga) {
+                alert("Please select both Kanda and Sarga.");
+                return;
+            }
+
+            let lines = transcriptData[kanda][sarga];
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "start,sloka\n";
+
+            lines.forEach((line, index) => {
+                let timestamp = timestamps[index] !== null ? formatTime(timestamps[index]) : "";
+                csvContent += `${timestamp},"${line.replace(/"/g, '""')}"\n`; // Escape double quotes in text
+            });
+
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `transcript_kanda${kanda}_sarga${sarga}.csv`);
+            link.setAttribute("charset", "utf-8");
+            document.body.appendChild(link); // Required for FF
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        
+    audioPlayer.addEventListener("timeupdate", function () {
+        let currentTime = audioPlayer.currentTime * 1000;
+        let newIndex = -1;
+        for (let i = 0; i < Object.keys(timestamps).length; i++) {
+            if (timestamps[i] !== null && currentTime >= timestamps[i]) {
+                newIndex = i;
+            } else {
+                break;
+            }
+        }
+        if (newIndex !== activeIndex) {
+            updateActiveLine(newIndex);
+        }
+       
+
+    });
+
+
+
+    document.addEventListener("DOMContentLoaded", function() {
+        populateKanda();
+        loadCSV();
+    });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            populateKanda();
+            loadCSV();
+            });
+
+
+   </script>
+
+    
+    
+</body>
+</html>
