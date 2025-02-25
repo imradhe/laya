@@ -1,343 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Audio & Text Alignment</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { padding-bottom: 80px; }
-        .audio-player { position: fixed; bottom: 0; width: 100%; background: #f8f9fa; padding: 10px; }
-        .transcript-container { max-height: 70vh; overflow-y: auto; margin-top: 30px; padding-top: 20px; }
-        .active-line { background-color: #d1e7dd; border-radius: 50px; padding: 5px; }
-        .timestamp { font-family: monospace; min-width: 80px; display: inline-block; text-align: center; }
-        .list-group-item { border: none;}
+      body {
+        padding-bottom: 80px;
+      }
+      .audio-player {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        background: #f8f9fa;
+        padding: 10px;
+      }
+      .transcript-container {
+        max-height: 70vh;
+        overflow-y: auto;
+        margin-top: 30px;
+        padding-top: 20px;
+      }
+      .active-line {
+        background-color: #d1e7dd;
+        border-radius: 50px;
+        padding: 5px;
+      }
+      .timestamp {
+        font-family: monospace;
+        min-width: 80px;
+        display: inline-block;
+        text-align: center;
+      }
+      .list-group-item {
+        border: none;
+      }
     </style>
-</head>
-<body>
-    <div class="container d-flex justify-content-center align-items-center mt-3">
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <label for="kandaSelect" class="form-label">Kanda</label>
-                <select id="kandaSelect" class="form-select" onchange="populateSarga()"></select>
-            </div>
-            <div class="col-md-4">
-                <label for="sargaSelect" class="form-label">Sarga</label>
-                <select id="sargaSelect" class="form-select"></select>
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button class="btn btn-primary" onclick="loadAudioAndTranscript()">Load</button>
-            </div>
+  </head>
+  <body>
+    <div
+      class="container d-flex justify-content-center align-items-center mt-3"
+    >
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <label for="kandaSelect" class="form-label">Kanda</label>
+          <select id="kandaSelect" class="form-select"></select>
         </div>
+        <div class="col-md-4">
+          <label for="sargaSelect" class="form-label">Sarga</label>
+          <select id="sargaSelect" class="form-select"></select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <button id="loadBtn" class="btn btn-primary">Load</button>
+        </div>
+      </div>
     </div>
 
-    
-    
     <div class="container transcript-container">
-        <ul id="transcriptList" class="list-group"></ul>
+      <ul id="transcriptList" class="list-group"></ul>
     </div>
 
     <footer class="audio-player row d-flex justify-content-center">
-        <audio id="audioPlayer" class="col-11" controls>
-            <source id="audioSource" src="" style="min-width: 200px !important;" type="audio/mp3">
-        </audio>
-        <button class="col btn btn-success rounded-pill mx-2" onclick="downloadTranscript()"> <i class="bi bi-download"></i> Save</button>
+      <audio id="audioPlayer" class="col-11" controls>
+        <source id="audioSource" src="" type="audio/mp3" />
+      </audio>
+      <button id="downloadBtn" class="col btn btn-success rounded-pill mx-2">
+        <i class="bi bi-download"></i> Save
+      </button>
     </footer>
 
     <script>
-        const KANDAS = { 1: 77, 2: 119, 3: 75, 4: 67, 5: 68, 6: 128 };
-        let transcriptData = {};
-        let timestamps = {}; // Store timestamps for each line
-        let activeIndex = -1;
-        let audioPlayer = document.getElementById("audioPlayer");
+      (function () {
+        const TranscriptApp = {
+          KANDAS: { 1: 77, 2: 119, 3: 75, 4: 67, 5: 68, 6: 128 },
+          transcriptData: {},
+          timestamps: {},
+          activeIndex: -1,
 
-        function populateKanda() {
-            let kandaSelect = document.getElementById("kandaSelect");
-            kandaSelect.innerHTML = '<option value="">Select Kanda</option>';
-            for (let kanda in KANDAS) {
-                let option = document.createElement("option");
-                option.value = kanda;
-                option.textContent = `Kanda ${kanda}`;
-                kandaSelect.appendChild(option);
+          init() {
+            this.cacheElements();
+            this.bindEvents();
+            this.populateKanda();
+            this.loadCSV();
+          },
+
+          cacheElements() {
+            this.kandaSelect = document.getElementById("kandaSelect");
+            this.sargaSelect = document.getElementById("sargaSelect");
+            this.transcriptList = document.getElementById("transcriptList");
+            this.audioSource = document.getElementById("audioSource");
+            this.audioPlayer = document.getElementById("audioPlayer");
+            this.loadBtn = document.getElementById("loadBtn");
+            this.downloadBtn = document.getElementById("downloadBtn");
+          },
+
+          bindEvents() {
+            this.kandaSelect.addEventListener("change", () =>
+              this.populateSarga()
+            );
+            this.loadBtn.addEventListener("click", () =>
+              this.loadAudioAndTranscript()
+            );
+            this.downloadBtn.addEventListener("click", () =>
+              this.downloadTranscript()
+            );
+            document.addEventListener("keydown", this.handleKeydown.bind(this));
+            this.audioPlayer.addEventListener(
+              "timeupdate",
+              this.handleTimeUpdate.bind(this)
+            );
+          },
+
+          populateKanda() {
+            this.kandaSelect.innerHTML =
+              '<option value="">Select Kanda</option>';
+            for (let kanda in this.KANDAS) {
+              const option = document.createElement("option");
+              option.value = kanda;
+              option.textContent = `Kanda ${kanda}`;
+              this.kandaSelect.appendChild(option);
             }
-        }
+          },
 
-        function populateSarga() {
-            let sargaSelect = document.getElementById("sargaSelect");
-            sargaSelect.innerHTML = '<option value="">Select Sarga</option>';
-            let selectedKanda = document.getElementById("kandaSelect").value;
+          populateSarga() {
+            this.sargaSelect.innerHTML =
+              '<option value="">Select Sarga</option>';
+            const selectedKanda = this.kandaSelect.value;
             if (!selectedKanda) return;
-            let sargaCount = KANDAS[selectedKanda];
+            const sargaCount = this.KANDAS[selectedKanda];
             for (let i = 1; i <= sargaCount; i++) {
-                let option = document.createElement("option");
-                option.value = i;
-                option.textContent = `Sarga ${i}`;
-                sargaSelect.appendChild(option);
+              const option = document.createElement("option");
+              option.value = i;
+              option.textContent = `Sarga ${i}`;
+              this.sargaSelect.appendChild(option);
             }
-        }
+          },
 
-        function loadCSV() { 
+          loadCSV() {
             fetch("transcript.csv")
-                .then(response => response.text())
-                .then(csvText => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            processCSVData(results.data);
-                        }
-                    });
-                })
-                .catch(error => console.error("Error loading CSV:", error));
-        }
+              .then((response) => response.text())
+              .then((csvText) => {
+                Papa.parse(csvText, {
+                  header: true,
+                  skipEmptyLines: true,
+                  complete: (results) => this.processCSVData(results.data),
+                });
+              })
+              .catch((error) => console.error("Error loading CSV:", error));
+          },
 
-
-        function processCSVData(data) {
-            transcriptData = {}; // Reset data
-            timestamps = {};
-
-            data.forEach(row => {
-                let kanda = String(row.Kanda).trim();
-                let sarga = String(row.Sarga).trim();
-                let sloka = String(row.Sloka).trim();
-
-                if (!transcriptData[kanda]) transcriptData[kanda] = {};
-                if (!transcriptData[kanda][sarga]) transcriptData[kanda][sarga] = [];
-
-                transcriptData[kanda][sarga].push(sloka);
+          processCSVData(data) {
+            this.transcriptData = {};
+            this.timestamps = {};
+            data.forEach((row) => {
+              const kanda = String(row.Kanda).trim();
+              const sarga = String(row.Sarga).trim();
+              const sloka = String(row.Sloka).trim();
+              if (!this.transcriptData[kanda]) {
+                this.transcriptData[kanda] = {};
+              }
+              if (!this.transcriptData[kanda][sarga]) {
+                this.transcriptData[kanda][sarga] = [];
+              }
+              this.transcriptData[kanda][sarga].push(sloka);
             });
-        }
+          },
 
-
-        function loadAudioAndTranscript() {
-            let kanda = document.getElementById("kandaSelect").value;
-            let sarga = document.getElementById("sargaSelect").value;
-            
-            console.log("Selected Kanda:", kanda, "Selected Sarga:", sarga);
-            
+          loadAudioAndTranscript() {
+            const kanda = this.kandaSelect.value;
+            const sarga = this.sargaSelect.value;
             if (!kanda || !sarga) {
-                alert("Please select both Kanda and Sarga.");
-                return;
+              alert("Please select both Kanda and Sarga.");
+              return;
             }
+            this.audioSource.src = `new_audio/${kanda}/${sarga}.mp3`;
+            this.audioPlayer.load();
+            this.loadTranscript();
+            this.activeIndex = -1;
+            this.updateActiveLine(-1);
+            this.timestamps = {};
+            this.updateTimestampDisplay();
+          },
 
-            document.getElementById("audioSource").src = `new_audio/${kanda}/${sarga}.mp3`;
-            document.getElementById("audioPlayer").load();
-            loadTranscript();
-            
-            activeIndex = -1;
-            updateActiveLine(-1);
-
-            timestamps = {};
-            updateTimestampDisplay();
-        }
-
-
-        function loadTranscript() {
-            let kanda = String(document.getElementById("kandaSelect").value);
-            let sarga = String(document.getElementById("sargaSelect").value);
-            let list = document.getElementById("transcriptList");
-            list.innerHTML = "";
-
-
-            if (!transcriptData[kanda]) {
-                console.error(`No data found for Kanda: ${kanda}`);
-                return;
+          loadTranscript() {
+            const kanda = this.kandaSelect.value;
+            const sarga = this.sargaSelect.value;
+            this.transcriptList.innerHTML = "";
+            if (
+              !this.transcriptData[kanda] ||
+              !this.transcriptData[kanda][sarga]
+            ) {
+              console.error(
+                `No transcript data for Kanda ${kanda}, Sarga ${sarga}`
+              );
+              return;
             }
-            if (!transcriptData[kanda][sarga]) {
-                console.error(`No data found for Kanda ${kanda}, Sarga ${sarga}`);
-                return;
-            }
-
-            let lines = transcriptData[kanda][sarga];
-
+            const lines = this.transcriptData[kanda][sarga];
             lines.forEach((line, index) => {
-                timestamps[index] = timestamps[index] || null;
-                let listItem = document.createElement("li");
-                listItem.className = "list-group-item d-flex align-items-center justify-content-between";
-                listItem.innerHTML = `
-                    <a class="mx-2 fs-4 resetBtn" onclick="resetStartTime(${index})"><i class="bi bi-x"></i></a>
-                    <input readonly disabled type="text" class="timestamp form-control form-control-sm" style="width: 80px;" value="${timestamps[index] ? formatTime(timestamps[index]) : "--:--:--"}">
-                    <a class="mx-2 fs-4 minusBtn" onclick="adjustTimestamp(${index}, -250)"><i class="bi bi-dash"></i></a>
-                    <a class="mx-2 fs-4 plusBtn" onclick="adjustTimestamp(${index}, 250)"><i class="bi bi-plus"></i></>
-                    <a class="mx-2 fs-4 playBtn" onclick="playFromTimestamp(${index})"><i class="bi bi-play-circle-fill"></i></a>
-                    <input type="text" class="form-control mx-2" value="${line}">                
-                    <a class="mx-2 fs-4 deleteBtn" style="cursor: pointer;" onclick="deleteLine(${index})"><i class="bi bi-trash"></i></a>
-                    <a class="mx-2 fs-4 addBtn" style="cursor: pointer;" onclick="addLine(${index})"><i class="bi bi-plus-circle-fill"></i></a>
-                `;
-                list.appendChild(listItem);
+              if (!(index in this.timestamps)) {
+                this.timestamps[index] = null;
+              }
+              const listItem = this.createTranscriptLine(line, index);
+              this.transcriptList.appendChild(listItem);
             });
-        }
+          },
 
-        function formatTime(ms) {
-            let minutes = Math.floor(ms / 60000).toString().padStart(2, "0");
-            let seconds = Math.floor((ms % 60000) / 1000).toString().padStart(2, "0");
-            let centiseconds = Math.floor((ms % 1000) / 10).toString().padStart(2, "0");
+          createTranscriptLine(line, index) {
+            const listItem = document.createElement("li");
+            listItem.className =
+              "list-group-item d-flex align-items-center justify-content-between";
+
+            // Create buttons and inputs
+            const resetBtn = document.createElement("a");
+            resetBtn.className = "mx-2 fs-4 resetBtn";
+            resetBtn.style.cursor = "pointer";
+            resetBtn.innerHTML = '<i class="bi bi-x"></i>';
+            resetBtn.addEventListener("click", () =>
+              this.resetStartTime(index)
+            );
+
+            const timestampInput = document.createElement("input");
+            timestampInput.type = "text";
+            timestampInput.className = "timestamp form-control form-control-sm";
+            timestampInput.style.width = "80px";
+            timestampInput.readOnly = true;
+            timestampInput.disabled = true;
+            timestampInput.value = this.timestamps[index]
+              ? this.formatTime(this.timestamps[index])
+              : "--:--:--";
+
+            const minusBtn = document.createElement("a");
+            minusBtn.className = "mx-2 fs-4 minusBtn";
+            minusBtn.style.cursor = "pointer";
+            minusBtn.innerHTML = '<i class="bi bi-dash"></i>';
+            minusBtn.addEventListener("click", () =>
+              this.adjustTimestamp(index, -250)
+            );
+
+            const plusBtn = document.createElement("a");
+            plusBtn.className = "mx-2 fs-4 plusBtn";
+            plusBtn.style.cursor = "pointer";
+            plusBtn.innerHTML = '<i class="bi bi-plus"></i>';
+            plusBtn.addEventListener("click", () =>
+              this.adjustTimestamp(index, 250)
+            );
+
+            const playBtn = document.createElement("a");
+            playBtn.className = "mx-2 fs-4 playBtn";
+            playBtn.style.cursor = "pointer";
+            playBtn.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
+            playBtn.addEventListener("click", () =>
+              this.playFromTimestamp(index)
+            );
+
+            const textInput = document.createElement("input");
+            textInput.type = "text";
+            textInput.className = "form-control mx-2";
+            textInput.value = line;
+
+            const deleteBtn = document.createElement("a");
+            deleteBtn.className = "mx-2 fs-4 deleteBtn";
+            deleteBtn.style.cursor = "pointer";
+            deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            deleteBtn.addEventListener("click", () => this.deleteLine(index));
+
+            const addBtn = document.createElement("a");
+            addBtn.className = "mx-2 fs-4 addBtn";
+            addBtn.style.cursor = "pointer";
+            addBtn.innerHTML = '<i class="bi bi-plus-circle-fill"></i>';
+            addBtn.addEventListener("click", () => this.addLine(index));
+
+            // Append all elements
+            listItem.append(
+              resetBtn,
+              timestampInput,
+              minusBtn,
+              plusBtn,
+              playBtn,
+              textInput,
+              deleteBtn,
+              addBtn
+            );
+            return listItem;
+          },
+
+          formatTime(ms) {
+            const minutes = Math.floor(ms / 60000)
+              .toString()
+              .padStart(2, "0");
+            const seconds = Math.floor((ms % 60000) / 1000)
+              .toString()
+              .padStart(2, "0");
+            const centiseconds = Math.floor((ms % 1000) / 10)
+              .toString()
+              .padStart(2, "0");
             return `${minutes}:${seconds}:${centiseconds}`;
-        }
+          },
 
-        function adjustTimestamp(index, offset) {
-            if (index in timestamps) {
-            let newTime = timestamps[index] + offset;
-            if (newTime >= 0 && (index === 0 || newTime >= timestamps[index - 1]) && newTime <= audioPlayer.duration * 1000) {
-                timestamps[index] = newTime;
-                audioPlayer.currentTime = newTime / 1000;
+          adjustTimestamp(index, offset) {
+            if (this.timestamps[index] !== null) {
+              const newTime = this.timestamps[index] + offset;
+              if (
+                newTime >= 0 &&
+                (index === 0 || newTime >= this.timestamps[index - 1]) &&
+                newTime <= this.audioPlayer.duration * 1000
+              ) {
+                this.timestamps[index] = newTime;
+                this.audioPlayer.currentTime = newTime / 1000;
+              }
             }
+            this.updateTimestampDisplay();
+          },
+
+          playFromTimestamp(index) {
+            if (this.timestamps[index] !== null) {
+              this.audioPlayer.currentTime = this.timestamps[index] / 1000;
+              this.audioPlayer.play();
             }
-            updateTimestampDisplay();
-        }
+          },
 
-        function playFromTimestamp(index) {
-            if (timestamps[index] !== null) {
-                let audioPlayer = document.getElementById("audioPlayer");
-                audioPlayer.currentTime = timestamps[index] / 1000;
-                audioPlayer.play();
+          resetStartTime(index) {
+            this.timestamps[index] = null;
+            this.updateActiveLine(index - 1);
+            this.updateTimestampDisplay();
+          },
+
+          updateActiveLine(newIndex) {
+            const transcriptItems = this.transcriptList.children;
+            if (
+              this.activeIndex >= 0 &&
+              this.activeIndex < transcriptItems.length
+            ) {
+              transcriptItems[this.activeIndex].classList.remove("active-line");
             }
-        }
-
-
-        function resetStartTime(index) {
-            timestamps[index] = null;
-            updateActiveLine(index - 1);
-            updateTimestampDisplay();
-        }
-
-        function updateActiveLine(newIndex) {
-        let transcriptList = document.getElementById("transcriptList").children;
-        if (activeIndex >= 0 && activeIndex < transcriptList.length) {
-            transcriptList[activeIndex].classList.remove("active-line");
-        }
-        if (newIndex >= 0 && newIndex < transcriptList.length) {
-            transcriptList[newIndex].classList.add("active-line");
-            activeIndex = newIndex;
-        }
-        document.querySelector(".active-line")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-
-
-        document.addEventListener("keydown", function (event) {
-            switch (event.key) {
-            case " ":
-                if (event.shiftKey) {
-                event.preventDefault();
-                audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
-                }
-                break;
-            case "ArrowDown":
-                if (activeIndex < document.getElementById("transcriptList").children.length - 1) {
-                updateActiveLine(activeIndex + 1);
-                timestamps[activeIndex] = audioPlayer.currentTime * 1000;
-                }
-                break;
-            case "ArrowUp":
-                if (activeIndex > 0) {
-                timestamps[activeIndex] = null;
-                updateActiveLine(activeIndex - 1);
-                
-                }
-                else if(activeIndex == 0){
-                    timestamps[activeIndex] = null;
-                    updateActiveLine(activeIndex - 1);
-                    activeIndex = -1;
-                }
-                
-                break;
-            case "ArrowLeft":
-                if (activeIndex in timestamps) {
-                    let newTime = timestamps[activeIndex] - 250;
-                    if (newTime >= 0 && (activeIndex === 0 || newTime >= timestamps[activeIndex - 1])) {
-                        timestamps[activeIndex] = newTime;
-                        audioPlayer.currentTime = newTime / 1000;
-                    }
-                }
-                break;
-            case "ArrowRight":
-                if (activeIndex in timestamps) {
-                    let newTime = timestamps[activeIndex] + 250;
-                    if (newTime <= audioPlayer.duration * 1000) {
-                        timestamps[activeIndex] = newTime;
-                        audioPlayer.currentTime = newTime / 1000;
-                    }
-                }
-                break;
-            }
-            updateTimestampDisplay();
-        });
-
-        function updateTimestampDisplay() {
-            let transcriptList = document.getElementById("transcriptList").children;
-            for (let i = 0; i < transcriptList.length; i++) {
-            let timestampSpan = transcriptList[i].querySelector(".timestamp");
-            if (timestamps[i]) {
-                timestampSpan.value = formatTime(timestamps[i]);
+            if (newIndex >= 0 && newIndex < transcriptItems.length) {
+              transcriptItems[newIndex].classList.add("active-line");
+              this.activeIndex = newIndex;
             } else {
-                timestampSpan.value = "--:--:--";
+              this.activeIndex = -1;
             }
+            const activeItem =
+              this.transcriptList.querySelector(".active-line");
+            if (activeItem) {
+              activeItem.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
             }
-        }
+          },
 
-        function downloadTranscript() {
-            let kanda = document.getElementById("kandaSelect").value;
-            let sarga = document.getElementById("sargaSelect").value;
-            if (!kanda || !sarga) {
-                alert("Please select both Kanda and Sarga.");
-                return;
-            }
-
-            let lines = transcriptData[kanda][sarga];
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "start,sloka\n";
-
-            lines.forEach((line, index) => {
-                let timestamp = timestamps[index] !== null ? formatTime(timestamps[index]) : "";
-                csvContent += `${timestamp},"${line.replace(/"/g, '""')}"\n`; // Escape double quotes in text
+          updateTimestampDisplay() {
+            Array.from(this.transcriptList.children).forEach((item, i) => {
+              const timestampInput = item.querySelector(".timestamp");
+              timestampInput.value = this.timestamps[i]
+                ? this.formatTime(this.timestamps[i])
+                : "--:--:--";
             });
+          },
 
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `transcript_kanda${kanda}_sarga${sarga}.csv`);
-            link.setAttribute("charset", "utf-8");
-            document.body.appendChild(link); // Required for FF
+          downloadTranscript() {
+            const kanda = this.kandaSelect.value;
+            const sarga = this.sargaSelect.value;
+            if (!kanda || !sarga) {
+              alert("Please select both Kanda and Sarga.");
+              return;
+            }
+            const lines = this.transcriptData[kanda][sarga];
+            let csvContent = "data:text/csv;charset=utf-8,start,sloka\n";
+            lines.forEach((line, index) => {
+              const timestamp =
+                this.timestamps[index] !== null
+                  ? this.formatTime(this.timestamps[index])
+                  : "";
+              csvContent += `${timestamp},"${line.replace(/"/g, '""')}"\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.href = encodedUri;
+            link.download = `transcript_kanda${kanda}_sarga${sarga}.csv`;
+            document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        }
+          },
 
-        
-    audioPlayer.addEventListener("timeupdate", function () {
-        let currentTime = audioPlayer.currentTime * 1000;
-        let newIndex = -1;
-        for (let i = 0; i < Object.keys(timestamps).length; i++) {
-            if (timestamps[i] !== null && currentTime >= timestamps[i]) {
-                newIndex = i;
-            } else {
+          handleTimeUpdate() {
+            const currentTime = this.audioPlayer.currentTime * 1000;
+            let newIndex = -1;
+            const keys = Object.keys(this.timestamps).map(Number);
+            for (let i = 0; i < keys.length; i++) {
+              if (
+                this.timestamps[keys[i]] !== null &&
+                currentTime >= this.timestamps[keys[i]]
+              ) {
+                newIndex = keys[i];
+              } else {
+                break;
+              }
+            }
+            if (newIndex !== this.activeIndex) {
+              this.updateActiveLine(newIndex);
+            }
+          },
+
+          addLine(index) {
+            // Implement addition logic as needed.
+            console.log("Add line after index:", index);
+          },
+
+          deleteLine(index) {
+            // Implement deletion logic as needed.
+            console.log("Delete line at index:", index);
+          },
+
+          handleKeydown(event) {
+            switch (event.key) {
+              case " ":
+                if (event.shiftKey) {
+                  event.preventDefault();
+                  this.audioPlayer.paused
+                    ? this.audioPlayer.play()
+                    : this.audioPlayer.pause();
+                }
+                break;
+              case "ArrowDown": {
+                const transcriptLength = this.transcriptList.children.length;
+                if (this.activeIndex < transcriptLength - 1) {
+                  this.updateActiveLine(this.activeIndex + 1);
+                  this.timestamps[this.activeIndex] =
+                    this.audioPlayer.currentTime * 1000;
+                }
+                break;
+              }
+              case "ArrowUp":
+                if (this.activeIndex > 0) {
+                  this.timestamps[this.activeIndex] = null;
+                  this.updateActiveLine(this.activeIndex - 1);
+                } else if (this.activeIndex === 0) {
+                  this.timestamps[this.activeIndex] = null;
+                  this.updateActiveLine(-1);
+                }
+                break;
+              case "ArrowLeft":
+                if (this.activeIndex in this.timestamps) {
+                  const newTime = this.timestamps[this.activeIndex] - 250;
+                  if (
+                    newTime >= 0 &&
+                    (this.activeIndex === 0 ||
+                      newTime >= this.timestamps[this.activeIndex - 1])
+                  ) {
+                    this.timestamps[this.activeIndex] = newTime;
+                    this.audioPlayer.currentTime = newTime / 1000;
+                  }
+                }
+                break;
+              case "ArrowRight":
+                if (this.activeIndex in this.timestamps) {
+                  const newTime = this.timestamps[this.activeIndex] + 250;
+                  if (newTime <= this.audioPlayer.duration * 1000) {
+                    this.timestamps[this.activeIndex] = newTime;
+                    this.audioPlayer.currentTime = newTime / 1000;
+                  }
+                }
                 break;
             }
-        }
-        if (newIndex !== activeIndex) {
-            updateActiveLine(newIndex);
-        }
-       
+            this.updateTimestampDisplay();
+          },
+        };
 
-    });
-
-
-
-    document.addEventListener("DOMContentLoaded", function() {
-        populateKanda();
-        loadCSV();
-    });
-
-        document.addEventListener("DOMContentLoaded", function() {
-            populateKanda();
-            loadCSV();
-            });
-
-
-   </script>
-
-    
-    
-</body>
+        document.addEventListener("DOMContentLoaded", () =>
+          TranscriptApp.init()
+        );
+      })();
+    </script>
+  </body>
 </html>
