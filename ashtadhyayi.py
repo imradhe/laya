@@ -9,16 +9,16 @@ from tqdm import tqdm
 # Define the base URL
 BASE_URL = "https://hrishikeshrt.github.io/audio_alignment/corpus/ashtadhyayi/"
 
-# Define the number of sargas for each kanda
-KANDAS = {
+# Define the number of padas for each adhyaya
+ADHYAYAS = {
     1: 4,
     2: 4,
     3: 4,
-    4:4,
-    5:4,
-    6:4,
-    7:4,
-    8:4
+    4: 4,
+    5: 4,
+    6: 4,
+    7: 4,
+    8: 4
 }
 
 # Define file paths
@@ -33,11 +33,11 @@ os.makedirs(audio_directory, exist_ok=True)
 # Ensure CSV files exist and have headers
 if not os.path.exists(sentence_csv_file):
     with open(sentence_csv_file, "w", encoding="utf-8") as f:
-        f.write("Kanda,Sarga,Sentence,Sentence Start,Sentence End\n")
+        f.write("Adhyaya,Pada,Sentence,Sentence Start,Sentence End\n")
 
 if not os.path.exists(word_csv_file):
     with open(word_csv_file, "w", encoding="utf-8") as f:
-        f.write("Kanda,Sarga,Word,Word Start,Word End\n")
+        f.write("Adhyaya,Pada,Word,Word Start,Word End\n")
 
 # Logging function
 def log_error(message):
@@ -65,9 +65,9 @@ def fetch_url(url):
 
 # Main scraping function
 def scrape_data():
-    for kanda, num_sargas in tqdm(KANDAS.items(), desc="Processing Kandas"):
-        for sarga in tqdm(range(1, num_sargas + 1), desc=f"Processing Sargas for Kanda {kanda}", leave=False):
-            url = f"{BASE_URL}{kanda}.{sarga}/"
+    for adhyaya, num_padas in tqdm(ADHYAYAS.items(), desc="Processing Adhyayas"):
+        for pada in tqdm(range(1, num_padas + 1), desc=f"Processing Padas for Adhyaya {adhyaya}", leave=False):
+            url = f"{BASE_URL}{adhyaya}.{pada}/"
             print(f"Scraping: {url}")
 
             response = fetch_url(url)
@@ -78,18 +78,18 @@ def scrape_data():
             soup = BeautifulSoup(response.text, 'html.parser')
 
             # Download and save audio file
-            audio_url = f"https://ia904603.us.archive.org/30/items/ashtadhyayi_audio/{kanda}.{sarga}.mp3"
-            audio_response = fetch_url(audio_url)
+            # audio_url = f"https://ia904603.us.archive.org/30/items/ashtadhyayi_audio/{adhyaya}.{pada}.mp3"
+            # audio_response = fetch_url(audio_url)
 
-            kanda_sarga_audio_dir = os.path.join(audio_directory, str(kanda))
-            os.makedirs(kanda_sarga_audio_dir, exist_ok=True)  # Ensure directory exists
+            # adhyaya_pada_audio_dir = os.path.join(audio_directory, str(adhyaya))
+            # os.makedirs(adhyaya_pada_audio_dir, exist_ok=True)  # Ensure directory exists
 
-            if audio_response:
-                audio_path = os.path.join(kanda_sarga_audio_dir, f"{sarga}.mp3")
-                with open(audio_path, "wb") as f:
-                    f.write(audio_response.content)
-            else:
-                log_error(f"Failed to fetch audio from {audio_url}, skipping...")
+            # if audio_response:
+            #     audio_path = os.path.join(adhyaya_pada_audio_dir, f"{pada}.mp3")
+            #     with open(audio_path, "wb") as f:
+            #         f.write(audio_response.content)
+            # else:
+            #     log_error(f"Failed to fetch audio from {audio_url}, skipping...")
 
             # Locate text container
             text_container = soup.find(id="text-container")
@@ -98,14 +98,14 @@ def scrape_data():
                 continue
             
             # Extract sentences and words
-            for sentence in tqdm(text_container.find_all(class_="sentence-unit"), desc=f"Processing Sentences for {kanda}.{sarga}", leave=False):
+            for sentence in tqdm(text_container.find_all(class_="sentence-unit"), desc=f"Processing Sentences for {adhyaya}.{pada}", leave=False):
                 try:
                     sentence_text = sentence.get_text(strip=True)
                     sentence_begin = sentence.get("data-begin", "")
                     sentence_end = sentence.get("data-end", "")
 
                     with open(sentence_csv_file, "a", encoding="utf-8") as f:
-                        f.write(f"{kanda},{sarga},{sentence_text},{sentence_begin},{sentence_end}\n")
+                        f.write(f"{adhyaya},{pada},{sentence_text},{sentence_begin},{sentence_end}\n")
                 
                     # Extract word units inside sentence
                     for word in sentence.find_all(class_="word-unit"):
@@ -115,7 +115,7 @@ def scrape_data():
                             word_end = word.get("data-end", "")
 
                             with open(word_csv_file, "a", encoding="utf-8") as f:
-                                f.write(f"{kanda},{sarga},{word_text},{word_begin},{word_end}\n")
+                                f.write(f"{adhyaya},{pada},{word_text},{word_begin},{word_end}\n")
                         except Exception as e:
                             log_error(f"Error processing word in {url}: {e}")
                 except Exception as e:
