@@ -8,6 +8,9 @@ base_dirs = [
     "amarakosha_audio/",
     "ashtadhyayi_audio/",  
     "ramayana_audio/",
+    "meghaduta_audio/",
+    "tarkasangraha_audio/",
+    "yogasutra_audio/",
 ]  # Change to your actual directories
 
 def get_audio_files(directories):
