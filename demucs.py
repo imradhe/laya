@@ -2,7 +2,6 @@ import os
 import shutil
 import subprocess
 from tqdm import tqdm
-import ffmpeg
 from pydub import AudioSegment
 
 # Define input items (directories containing audio files)
@@ -68,6 +67,15 @@ def merge_audio(chunks, output_path):
     combined.export(output_path, format="wav")
 
 
+def remove_old_chunks(output_dir, track_name):
+    """Remove old chunk files if found."""
+    chunk_files = [f for f in os.listdir(output_dir) if f.startswith(track_name + "_part") and f.endswith("_vocals.wav")]
+    if chunk_files:
+        tqdm.write(f"🗑️ Removing old chunks for: {track_name}")
+        for chunk_file in chunk_files:
+            os.remove(os.path.join(output_dir, chunk_file))
+
+
 def process_single_audio(input_audio):
     """Process audio by splitting, running Demucs on chunks, and merging."""
     root_dir = next((d for d in input_items if input_audio.startswith(d)), None) or os.path.dirname(input_audio)
@@ -77,9 +85,13 @@ def process_single_audio(input_audio):
     output_dir = os.path.join(output_root, os.path.dirname(relative_path))
     final_output = os.path.join(output_dir, f"{track_name}.wav")
 
-    # Skip if output already exists
+    # **Check if the final processed audio already exists**
     if os.path.exists(final_output):
-        return f"✅ Already exists: {final_output}"
+        return f"✅ Skipped (Already Processed): {final_output}"
+
+    # **Check for old chunk files and remove if necessary**
+    if os.path.exists(output_dir):
+        remove_old_chunks(output_dir, track_name)
 
     os.makedirs(output_dir, exist_ok=True)
 
