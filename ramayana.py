@@ -1,7 +1,10 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import time
+import random
+import traceback
 from tqdm import tqdm
 
 # Define the base URL
@@ -17,10 +20,15 @@ KANDAS = {
     6: 128
 }
 
-# Open CSV files for writing incrementally
-sentence_csv_file = "ramayana_sentence_data.csv"
-word_csv_file = "ramayana_word_data.csv"
+sentence_csv_file = "SwaraSangraha/ramayana/sentence_data.csv"
+word_csv_file = "SwaraSangraha/ramayana/word_data.csv"
+audio_directory = "SwaraSangraha/ramayana/audio"
 log_file = "error_log.txt"
+
+# Ensure directories exist
+os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
+os.makedirs(os.path.dirname(word_csv_file), exist_ok=True)
+os.makedirs(audio_directory, exist_ok=True)
 
 with open(sentence_csv_file, "w", encoding="utf-8") as f:
     f.write("Kanda,Sarga,Sentence,Sentence Start,Sentence End\n")
@@ -31,6 +39,26 @@ with open(word_csv_file, "w", encoding="utf-8") as f:
 def log_error(message):
     with open(log_file, "a", encoding="utf-8") as log:
         log.write(message + "\n")
+
+
+# Function to fetch URL with retries and rate limiting
+MAX_RETRIES = 3
+
+def fetch_url(url):
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                return response
+            elif response.status_code == 429:
+                wait_time = 2 ** attempt + random.uniform(0, 1)
+                log_error(f"Rate limit exceeded for {url}, retrying in {wait_time:.2f} seconds...")
+                time.sleep(wait_time)
+        except requests.RequestException as e:
+            log_error(f"Request error for {url}: {e}")
+        time.sleep(2)
+    return None  # Return None if all retries fail
+
 
 # Function to fetch and parse data
 def scrape_data():
@@ -79,6 +107,19 @@ def scrape_data():
             except Exception as e:
                 log_error(f"Error processing {url}: {e}")
             
+                        # Uncomment the below code to download audio files
+            audio_file = soup.find("audio")
+            if audio_file and audio_file.get("src"):
+                audio_url = audio_file["src"]
+                audio_filename = os.path.join(audio_directory, f"{kanda}/{sarga}.mp3")
+
+                response = fetch_url(audio_url)
+                if response:
+                    with open(audio_filename, "wb") as f:
+                        f.write(response.content)
+                else:
+                    log_error(f"Failed to fetch audio file {audio_url} for {kanda}/{sarga}")
+
             # Sleep to avoid excessive requests
             time.sleep(1)
     print("Data scraping completed.")

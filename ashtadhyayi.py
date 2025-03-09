@@ -8,13 +8,16 @@ import traceback
 from tqdm import tqdm
 
 BASE_URL = "https://hrishikeshrt.github.io/audio_alignment/corpus/ashtadhyayi/"
-ADHYAYAS = {i: 4 for i in range(1, 5)}
+ADHYAYAS = {i: 4 for i in range(1, 9)}
 
-sentence_csv_file = "ashtadhyayi_sentence_data.csv"
-word_csv_file = "ashtadhyayi_word_data.csv"
-audio_directory = "ashtadhyayi_audio"
+sentence_csv_file = "SwaraSangraha/ashtadhyayi/sentence_data.csv"
+word_csv_file = "SwaraSangraha/ashtadhyayi/word_data.csv"
+audio_directory = "SwaraSangraha/ashtadhyayi/audio"
 log_file = "error_log.txt"
 
+# Ensure directories exist
+os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
+os.makedirs(os.path.dirname(word_csv_file), exist_ok=True)
 os.makedirs(audio_directory, exist_ok=True)
 
 def ensure_csv(file_path, headers):
@@ -94,20 +97,20 @@ def scrape_data():
                 except Exception as e:
                     log_error(f"Error processing sentence in {url}: {e}")
 
-            ## Uncomment the below code to download audio files
-            # audio_file = soup.find("audio")
-            # if audio_file and audio_file.get("src"):
-            #     audio_url = audio_file["src"]
-            #     audio_subdir = os.path.join(audio_directory, str(adhyaya))
-            #     os.makedirs(audio_subdir, exist_ok=True)
-            #     audio_filename = os.path.join(audio_subdir, f"{pada}.mp3")
+            # Uncomment the below code to download audio files
+            audio_file = soup.find("audio")
+            if audio_file and audio_file.get("src"):
+                audio_url = audio_file["src"]
+                audio_subdir = os.path.join(audio_directory, str(adhyaya))
+                os.makedirs(audio_subdir, exist_ok=True)
+                audio_filename = os.path.join(audio_subdir, f"{pada}.mp3")
 
-            #     response = fetch_url(audio_url)
-            #     if response:
-            #         with open(audio_filename, "wb") as f:
-            #             f.write(response.content)
-            #     else:
-            #         log_error(f"Failed to fetch audio file {audio_url} for {adhyaya}.{pada}")
+                response = fetch_url(audio_url)
+                if response:
+                    with open(audio_filename, "wb") as f:
+                        f.write(response.content)
+                else:
+                    log_error(f"Failed to fetch audio file {audio_url} for {adhyaya}.{pada}")
             
             time.sleep(random.uniform(2, 5))
 

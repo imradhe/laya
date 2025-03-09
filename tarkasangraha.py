@@ -14,13 +14,14 @@ SUBPATHS = [
     1,
 ]
 
-# Define file paths
-sentence_csv_file = "tarkasangraha_sentence_data.csv"
-word_csv_file = "tarkasangraha_word_data.csv"
-audio_directory = "tarkasangraha_audio"
+sentence_csv_file = "SwaraSangraha/tarkasangraha/sentence_data.csv"
+word_csv_file = "SwaraSangraha/tarkasangraha/word_data.csv"
+audio_directory = "SwaraSangraha/tarkasangraha/audio"
 log_file = "error_log.txt"
 
-# Ensure required directories exist
+# Ensure directories exist
+os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
+os.makedirs(os.path.dirname(word_csv_file), exist_ok=True)
 os.makedirs(audio_directory, exist_ok=True)
 
 # Ensure CSV files exist and have headers
@@ -100,17 +101,17 @@ def scrape_data():
                     log_error(f"Error processing sentence in {url}: {e}")
             
             # Uncomment the below code to download audio files
-            # audio_file = soup.find("audio")
-            # if audio_file and audio_file.get("src"):
-            #     audio_url = audio_file["src"]
-            #     audio_filename = os.path.join(audio_directory, f"{SUBPATH}.mp3")
+            audio_file = soup.find("audio")
+            if audio_file and audio_file.get("src"):
+                audio_url = audio_file["src"]
+                audio_filename = os.path.join(audio_directory, f"{SUBPATH}.mp3")
 
-            #     response = fetch_url(audio_url)
-            #     if response:
-            #         with open(audio_filename, "wb") as f:
-            #             f.write(response.content)
-            #     else:
-            #         log_error(f"Failed to fetch audio file {audio_url} for {SUBPATH}")
+                response = fetch_url(audio_url)
+                if response:
+                    with open(audio_filename, "wb") as f:
+                        f.write(response.content)
+                else:
+                    log_error(f"Failed to fetch audio file {audio_url} for {SUBPATH}")
            
             # Sleep to avoid excessive requests
             time.sleep(random.uniform(1, 3))

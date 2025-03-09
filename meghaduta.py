@@ -20,12 +20,14 @@ SUBPATHS = [
 ]
 
 # Define file paths
-sentence_csv_file = "meghaduta_sentence_data.csv"
-word_csv_file = "meghaduta_word_data.csv"
-audio_directory = "meghaduta_audio"
+sentence_csv_file = "SwaraSangraha/meghaduta/sentence_data.csv"
+word_csv_file = "SwaraSangraha/meghaduta/word_data.csv"
+audio_directory = "SwaraSangraha/meghaduta/audio"
 log_file = "error_log.txt"
 
-# Ensure required directories exist
+# Ensure directories exist
+os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
+os.makedirs(os.path.dirname(word_csv_file), exist_ok=True)
 os.makedirs(audio_directory, exist_ok=True)
 
 # Ensure CSV files exist and have headers
@@ -105,18 +107,18 @@ def scrape_data():
                 except Exception as e:
                     log_error(f"Error processing sentence in {url}: {e}")
             
-            #             # Uncomment the below code to download audio files
-            # audio_file = soup.find("audio")
-            # if audio_file and audio_file.get("src"):
-            #     audio_url = audio_file["src"]
-            #     audio_filename = os.path.join(audio_directory, f"{SUBPATH}.mp3")
+                        # Uncomment the below code to download audio files
+            audio_file = soup.find("audio")
+            if audio_file and audio_file.get("src"):
+                audio_url = audio_file["src"]
+                audio_filename = os.path.join(audio_directory, f"{SUBPATH}.mp3")
 
-            #     response = fetch_url(audio_url)
-            #     if response:
-            #         with open(audio_filename, "wb") as f:
-            #             f.write(response.content)
-            #     else:
-            #         log_error(f"Failed to fetch audio file {audio_url} for {SUBPATH}")
+                response = fetch_url(audio_url)
+                if response:
+                    with open(audio_filename, "wb") as f:
+                        f.write(response.content)
+                else:
+                    log_error(f"Failed to fetch audio file {audio_url} for {SUBPATH}")
             
 
             # Sleep to avoid excessive requests

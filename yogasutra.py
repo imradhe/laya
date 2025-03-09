@@ -18,12 +18,14 @@ SUBPATHS = [
 ]
 
 # Define file paths
-sentence_csv_file = "yogasutra_sentence_data.csv"
-word_csv_file = "yogasutra_word_data.csv"
-audio_directory = "yogasutra_audio"
+sentence_csv_file = "SwaraSangraha/yogasutra/sentence_data.csv"
+word_csv_file = "SwaraSangraha/yogasutra/word_data.csv"
+audio_directory = "SwaraSangraha/yogasutra/audio"
 log_file = "error_log.txt"
 
-# Ensure required directories exist
+# Ensure directories exist
+os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
+os.makedirs(os.path.dirname(word_csv_file), exist_ok=True)
 os.makedirs(audio_directory, exist_ok=True)
 
 # Ensure CSV files exist and have headers
