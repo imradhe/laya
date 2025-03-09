@@ -20,10 +20,11 @@ KANDAS = {
     6: 128
 }
 
-sentence_csv_file = "SwaraSangraha/ramayana/sentence_data.csv"
-word_csv_file = "SwaraSangraha/ramayana/word_data.csv"
-audio_directory = "SwaraSangraha/ramayana/audio"
-log_file = "error_log.txt"
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sentence_csv_file = os.path.join(base_dir, "SwaraSangraha/ramayana/sentence_data.csv")
+word_csv_file = os.path.join(base_dir, "SwaraSangraha/ramayana/word_data.csv")
+audio_directory = os.path.join(base_dir, "SwaraSangraha/ramayana/audio")
+log_file = os.path.join(base_dir, "error_log.txt")
 
 # Ensure directories exist
 os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)

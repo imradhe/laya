@@ -5,11 +5,20 @@ from tqdm import tqdm
 from pydub import AudioSegment
 
 # Define input items (directories containing audio files)
+
+
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 input_items = [
-    "amarakosha_audio/",
-    "ashtadhyayi_audio/",  
-    "ramayana_audio/",
-]  
+    "amarakosha/",
+    "ashtadhyayi/",
+    "ramayana/",
+    "meghaduta/",
+    "tarkasangraha/",
+    "yogasutra/",
+]
+
+base_dirs = [os.path.join(root_dir, "SwaraSangraha/", input_item, "audio/") for input_item in input_items]
+
 
 output_root = "demucs"  # Root output directory
 temp_dir = "demucs_temp"  # Temporary directory for processing
@@ -20,7 +29,7 @@ def get_audio_files():
     """Retrieve all audio files from input directories."""
     audio_files = []
     
-    for item in input_items:
+    for item in base_dirs:
         if os.path.isdir(item):  
             for dirpath, _, filenames in os.walk(item):
                 for file in filenames:
@@ -88,7 +97,7 @@ def remove_old_chunks(output_dir, track_name):
 
 def process_single_audio(input_audio):
     """Process audio by splitting, running Demucs on chunks, and merging."""
-    root_dir = next((d for d in input_items if input_audio.startswith(d)), None) or os.path.dirname(input_audio)
+    root_dir = next((d for d in base_dirs if input_audio.startswith(d)), None) or os.path.dirname(input_audio)
     relative_path = os.path.relpath(input_audio, root_dir)
     track_name = os.path.splitext(os.path.basename(input_audio))[0]
 

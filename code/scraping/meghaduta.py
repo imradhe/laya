@@ -7,17 +7,24 @@ import traceback
 from tqdm import tqdm
 
 # Define the base URL
-BASE_URL = "https://avinashvarna.github.io/audio_alignment/corpus/tarkasangraha/"
+BASE_URL = "https://avinashvarna.github.io/audio_alignment/corpus/meghaduta/"
 
 # Define the subpaths to iterate through
 SUBPATHS = [
-    1,
+    "pm01-10",
+    "pm11-20",
+    "pm21-30",
+    "pm31-40",
+    "pm41-50",
+    "pm51-63"
 ]
 
-sentence_csv_file = "SwaraSangraha/tarkasangraha/sentence_data.csv"
-word_csv_file = "SwaraSangraha/tarkasangraha/word_data.csv"
-audio_directory = "SwaraSangraha/tarkasangraha/audio"
-log_file = "error_log.txt"
+# Define file paths
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sentence_csv_file = os.path.join(base_dir, "SwaraSangraha/meghaduta/sentence_data.csv")
+word_csv_file = os.path.join(base_dir, "SwaraSangraha/meghaduta/word_data.csv")
+audio_directory = os.path.join(base_dir, "SwaraSangraha/meghaduta/audio")
+log_file = os.path.join(base_dir, "error_log.txt")
 
 # Ensure directories exist
 os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
@@ -27,11 +34,11 @@ os.makedirs(audio_directory, exist_ok=True)
 # Ensure CSV files exist and have headers
 if not os.path.exists(sentence_csv_file):
     with open(sentence_csv_file, "w", encoding="utf-8") as f:
-        f.write("Sentence,Sentence Start,Sentence End\n")
+        f.write("Part,Sentence,Sentence Start,Sentence End\n")
 
 if not os.path.exists(word_csv_file):
     with open(word_csv_file, "w", encoding="utf-8") as f:
-        f.write("Sarga,Word,Word Start,Word End\n")
+        f.write("Part,Sarga,Word,Word Start,Word End\n")
 
 # Logging function
 def log_error(message):
@@ -56,6 +63,7 @@ def fetch_url(url):
             log_error(f"Request error for {url}: {e}")
         time.sleep(2)
     return None  # Return None if all retries fail
+
 
 # Main scraping function
 def scrape_data():
@@ -84,7 +92,7 @@ def scrape_data():
                     sentence_end = sentence.get("data-end", "")
 
                     with open(sentence_csv_file, "a", encoding="utf-8") as f:
-                        f.write(f"{sentence_text},{sentence_begin},{sentence_end}\n")
+                        f.write(f"{SUBPATH},{sentence_text},{sentence_begin},{sentence_end}\n")
                 
                     # Extract word units inside sentence
                     for word in sentence.find_all(class_="word-unit"):
@@ -94,13 +102,13 @@ def scrape_data():
                             word_end = word.get("data-end", "")
 
                             with open(word_csv_file, "a", encoding="utf-8") as f:
-                                f.write(f"{word_text},{word_begin},{word_end}\n")
+                                f.write(f"{SUBPATH},{word_text},{word_begin},{word_end}\n")
                         except Exception as e:
                             log_error(f"Error processing word in {url}: {e}")
                 except Exception as e:
                     log_error(f"Error processing sentence in {url}: {e}")
             
-            # Uncomment the below code to download audio files
+                        # Uncomment the below code to download audio files
             audio_file = soup.find("audio")
             if audio_file and audio_file.get("src"):
                 audio_url = audio_file["src"]
@@ -112,7 +120,8 @@ def scrape_data():
                         f.write(response.content)
                 else:
                     log_error(f"Failed to fetch audio file {audio_url} for {SUBPATH}")
-           
+            
+
             # Sleep to avoid excessive requests
             time.sleep(random.uniform(1, 3))
 

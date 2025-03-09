@@ -4,14 +4,17 @@ from tqdm import tqdm
 from collections import defaultdict
 
 # List of base directories containing subdirectories with audio files
-base_dirs = [
-    "amarakosha_audio/",
-    "ashtadhyayi_audio/",  
-    "ramayana_audio/",
-    "meghaduta_audio/",
-    "tarkasangraha_audio/",
-    "yogasutra_audio/",
-]  # Change to your actual directories
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sub_dirs = [
+    "amarakosha/",
+    "ashtadhyayi/",
+    "ramayana/",
+    "meghaduta/",
+    "tarkasangraha/",
+    "yogasutra/",
+]
+
+base_dirs = [os.path.join(root_dir, "SwaraSangraha/", sub_dir, "audio/") for sub_dir in sub_dirs]
 
 def get_audio_files(directories):
     """Recursively fetch all audio files from the given directories."""
