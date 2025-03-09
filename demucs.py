@@ -60,11 +60,21 @@ def merge_audio(chunks, output_path):
     """Merge processed chunks back into a single audio file."""
     combined = AudioSegment.silent(duration=0)
     
-    for chunk in sorted(chunks, key=lambda x: int(x.split("_part")[-1].split(".wav")[0])):
+    # **Fix sorting logic: Extract number from "_partX_vocals.wav"**
+    def extract_chunk_number(filename):
+        """Extracts numeric part from filenames like 'track_part0_vocals.wav'."""
+        base_name = os.path.basename(filename)
+        parts = base_name.split("_part")[-1].split("_vocals.wav")[0]
+        return int(parts) if parts.isdigit() else float('inf')  # Put non-numeric at the end
+
+    sorted_chunks = sorted(chunks, key=extract_chunk_number)
+
+    for chunk in sorted_chunks:
         combined += AudioSegment.from_file(chunk)
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     combined.export(output_path, format="wav")
+
 
 
 def remove_old_chunks(output_dir, track_name):
