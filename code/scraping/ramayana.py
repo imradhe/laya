@@ -21,9 +21,9 @@ KANDAS = {
 }
 
 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sentence_csv_file = os.path.join(base_dir, "SwaraSangraha/ramayana/sentence_data.csv")
-word_csv_file = os.path.join(base_dir, "SwaraSangraha/ramayana/word_data.csv")
-audio_directory = os.path.join(base_dir, "SwaraSangraha/ramayana/audio")
+sentence_csv_file = os.path.join(base_dir, "SwaraSangraha/ramayana2/sentence_data.csv")
+word_csv_file = os.path.join(base_dir, "SwaraSangraha/ramayana2/word_data.csv")
+audio_directory = os.path.join(base_dir, "SwaraSangraha/ramayana2/audio")
 log_file = os.path.join(base_dir, "error_log.txt")
 
 # Ensure directories exist
@@ -108,11 +108,12 @@ def scrape_data():
             except Exception as e:
                 log_error(f"Error processing {url}: {e}")
             
-                        # Uncomment the below code to download audio files
+            # Uncomment the below code to download audio files
             audio_file = soup.find("audio")
             if audio_file and audio_file.get("src"):
                 audio_url = audio_file["src"]
                 audio_filename = os.path.join(audio_directory, f"{kanda}/{sarga}.mp3")
+                os.makedirs(os.path.dirname(audio_filename), exist_ok=True)
 
                 response = fetch_url(audio_url)
                 if response:
