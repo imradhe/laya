@@ -5,8 +5,4 @@ aranyakanda.csv
 kishkindhakanda.csv
 sundarakanda.csv
 yuddhakanda.csv
-
-audio/
-segmented/
-markers/
-test/
+audio/*
