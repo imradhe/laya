@@ -146,7 +146,7 @@
           },
 
           loadCSV() {
-            fetch("transcript.csv")
+            fetch("SwaraSangraha/ramayana/transcript.csv")
               .then((response) => response.text())
               .then((csvText) => {
                 Papa.parse(csvText, {
@@ -182,7 +182,7 @@
               alert("Please select both Kanda and Sarga.");
               return;
             }
-            this.audioSource.src = `new_audio/${kanda}/${sarga}.mp3`;
+            this.audioSource.src = `SwaraSangraha/ramayana/audio/${kanda}/${sarga}.mp3`;
             this.audioPlayer.load();
             this.loadTranscript();
             this.activeIndex = -1;

@@ -9,12 +9,7 @@ from pydub import AudioSegment
 
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 input_items = [
-    "amarakosha/",
-    "ashtadhyayi/",
-    "ramayana/",
-    "meghaduta/",
     "tarkasangraha/",
-    "yogasutra/",
 ]
 
 base_dirs = [os.path.join(root_dir, "SwaraSangraha/", input_item, "audio/") for input_item in input_items]
@@ -145,6 +140,8 @@ def process_single_audio(input_audio):
         result = f"❌ No chunks processed for {input_audio}"
 
     shutil.rmtree(temp_dir, ignore_errors=True)  # Cleanup temporary files
+
+
 
     return result
 

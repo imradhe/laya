@@ -1,11 +1,15 @@
 import pandas as pd
+import os
 
 # Define KANDAS mapping
 KANDAS = {1: 77, 2: 119, 3: 75, 4: 67, 5: 68, 6: 128}
 
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Load the CSV file
-input_file = "ramayana_word_data.csv"
-output_file = "transcript.csv"
+input_file = os.path.join(root_dir, "SwaraSangraha/ramayana/ramayana_word_data.csv")
+output_file = os.path.join(root_dir, "SwaraSangraha/ramayana/transcript.csv")
+
 
 df = pd.read_csv(input_file, quoting=3, encoding="utf-8", on_bad_lines="skip")
 
