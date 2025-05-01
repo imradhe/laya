@@ -1,454 +1,557 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Audio & Text Alignment</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
-    />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <style>
-      body {
-        padding-bottom: 80px;
-      }
-      .audio-player {
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-        background: #f8f9fa;
-        padding: 10px;
-      }
-      .transcript-container {
-        max-height: 70vh;
-        overflow-y: auto;
-        margin-top: 30px;
-        padding-top: 20px;
-      }
-      .active-line {
-        background-color: #d1e7dd;
-        border-radius: 50px;
-        padding: 5px;
-      }
-      .timestamp {
-        font-family: monospace;
-        min-width: 80px;
-        display: inline-block;
-        text-align: center;
-      }
-      .list-group-item {
-        border: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div
-      class="container d-flex justify-content-center align-items-center mt-3"
-    >
-      <div class="row mb-3">
-        <div class="col-md-4">
-          <label for="kandaSelect" class="form-label">Kanda</label>
-          <select id="kandaSelect" class="form-select"></select>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio & Text Alignment</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <style>
+    body {
+      padding-bottom: 80px;
+    }
+
+    .audio-player {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: #f8f9fa;
+      padding: 10px;
+    }
+
+    .transcript-container {
+      max-height: 70vh;
+      overflow-y: auto;
+      margin-top: 30px;
+      padding-top: 20px;
+    }
+
+    .active-line {
+      background-color: #d1e7dd;
+      border-radius: 50px;
+      padding: 5px;
+    }
+
+    .timestamp {
+      font-family: monospace;
+      min-width: 80px;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .list-group-item {
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container d-flex justify-content-center align-items-center mt-3">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label for="kandaSelect" class="form-label">Kanda</label>
+        <select id="kandaSelect" class="form-select"></select>
+      </div>
+      <div class="col-md-4">
+        <label for="sargaSelect" class="form-label">Sarga</label>
+        <select id="sargaSelect" class="form-select"></select>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button id="loadBtn" class="btn btn-primary">Load</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container transcript-container">
+    <ul id="transcriptList" class="list-group"></ul>
+  </div>
+
+  <footer class="audio-player row d-flex justify-content-center">
+    <audio id="audioPlayer" class="col-11" controls>
+      <source id="audioSource" src="" type="audio/mp3" />
+    </audio>
+    <button id="downloadBtn" class="col btn btn-success rounded-pill mx-2">
+      <i class="bi bi-download"></i> Save
+    </button>
+  </footer>
+  <!-- Flag Modal -->
+  <div class="modal fade" id="flagModal" tabindex="-1" aria-labelledby="flagModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="flagModalLabel">Flag Sloka</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="col-md-4">
-          <label for="sargaSelect" class="form-label">Sarga</label>
-          <select id="sargaSelect" class="form-select"></select>
+        <div class="modal-body">
+          <select class="form-select" id="flagReasons" multiple>
+            <option value="mispronunciation">Mispronunciation</option>
+            <option value="incorrect_text">Incorrect Text</option>
+            <option value="incomplete_sloka">Incomplete Sloka</option>
+            <option value="background_noise">Background Noise</option>
+            <option value="low_volume">Low Volume</option>
+            <option value="needs_manual_review">Needs Manual Review</option>
+          </select>
+          <div class="mt-3">
+            <label for="flagComment" class="form-label">Comment (optional):</label>
+            <textarea class="form-control" id="flagComment" rows="2"></textarea>
+          </div>
         </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <button id="loadBtn" class="btn btn-primary">Load</button>
+        <div class="modal-footer">
+          <button id="submitFlagBtn" type="button" class="btn btn-primary" data-bs-dismiss="modal">Submit Flag</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="container transcript-container">
-      <ul id="transcriptList" class="list-group"></ul>
-    </div>
+  <script>
+    (function () {
+      const TranscriptApp = {
+        KANDAS: { 1: 77, 2: 119, 3: 75, 4: 67, 5: 68, 6: 128 },
+        transcriptData: {},
+        timestamps: {},
+        flags: {},
+        activeIndex: -1,
 
-    <footer class="audio-player row d-flex justify-content-center">
-      <audio id="audioPlayer" class="col-11" controls>
-        <source id="audioSource" src="" type="audio/mp3" />
-      </audio>
-      <button id="downloadBtn" class="col btn btn-success rounded-pill mx-2">
-        <i class="bi bi-download"></i> Save
-      </button>
-    </footer>
+        init() {
+          this.cacheElements();
+          this.bindEvents();
+          this.populateKanda();
+          this.loadCSV();
+        },
 
-    <script>
-        (function () {
-  const TranscriptApp = {
-    KANDAS: { 1: 77, 2: 119, 3: 75, 4: 67, 5: 68, 6: 128 },
-    transcriptData: {},
-    activeIndex: -1,
+        cacheElements() {
+          this.kandaSelect = document.getElementById("kandaSelect");
+          this.sargaSelect = document.getElementById("sargaSelect");
+          this.transcriptList = document.getElementById("transcriptList");
+          this.audioSource = document.getElementById("audioSource");
+          this.audioPlayer = document.getElementById("audioPlayer");
+          this.loadBtn = document.getElementById("loadBtn");
+          this.downloadBtn = document.getElementById("downloadBtn");
+        },
 
-    init() {
-      this.cacheElements();
-      this.bindEvents();
-      this.populateKanda();
-      this.loadCSV();
-    },
+        bindEvents() {
+          this.kandaSelect.addEventListener("change", () =>
+            this.populateSarga()
+          );
+          this.loadBtn.addEventListener("click", () =>
+            this.loadAudioAndTranscript()
+          );
+          this.downloadBtn.addEventListener("click", () =>
+            this.downloadTranscript()
+          );
+          document.addEventListener("keydown", this.handleKeydown.bind(this));
+          this.audioPlayer.addEventListener(
+            "timeupdate",
+            this.handleTimeUpdate.bind(this)
+          );
+        },
 
-    cacheElements() {
-      this.kandaSelect = document.getElementById("kandaSelect");
-      this.sargaSelect = document.getElementById("sargaSelect");
-      this.transcriptList = document.getElementById("transcriptList");
-      this.audioSource = document.getElementById("audioSource");
-      this.audioPlayer = document.getElementById("audioPlayer");
-      this.loadBtn = document.getElementById("loadBtn");
-      this.downloadBtn = document.getElementById("downloadBtn");
-    },
+        populateKanda() {
+          this.kandaSelect.innerHTML =
+            '<option value="">Select Kanda</option>';
+          for (let kanda in this.KANDAS) {
+            const option = document.createElement("option");
+            option.value = kanda;
+            option.textContent = `Kanda ${kanda}`;
+            this.kandaSelect.appendChild(option);
+          }
+        },
 
-    bindEvents() {
-      this.kandaSelect.addEventListener("change", () => this.populateSarga());
-      this.loadBtn.addEventListener("click", () => this.loadAudioAndTranscript());
-      this.downloadBtn.addEventListener("click", () => this.downloadTranscript());
-      document.addEventListener("keydown", this.handleKeydown.bind(this));
-      this.audioPlayer.addEventListener("timeupdate", this.handleTimeUpdate.bind(this));
-    },
+        populateSarga() {
+          this.sargaSelect.innerHTML =
+            '<option value="">Select Sarga</option>';
+          const selectedKanda = this.kandaSelect.value;
+          if (!selectedKanda) return;
+          const sargaCount = this.KANDAS[selectedKanda];
+          for (let i = 1; i <= sargaCount; i++) {
+            const option = document.createElement("option");
+            option.value = i;
+            option.textContent = `Sarga ${i}`;
+            this.sargaSelect.appendChild(option);
+          }
+        },
 
-    populateKanda() {
-      this.kandaSelect.innerHTML = '<option value="">Select Kanda</option>';
-      for (let kanda in this.KANDAS) {
-        const option = document.createElement("option");
-        option.value = kanda;
-        option.textContent = `Kanda ${kanda}`;
-        this.kandaSelect.appendChild(option);
-      }
-    },
+        loadCSV() {
+          fetch("SwaraSangraha/ramayana/transcript.csv")
+            .then((response) => response.text())
+            .then((csvText) => {
+              Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => this.processCSVData(results.data),
+              });
+            })
+            .catch((error) => console.error("Error loading CSV:", error));
+        },
 
-    populateSarga() {
-      this.sargaSelect.innerHTML = '<option value="">Select Sarga</option>';
-      const selectedKanda = this.kandaSelect.value;
-      if (!selectedKanda) return;
-      const sargaCount = this.KANDAS[selectedKanda];
-      for (let i = 1; i <= sargaCount; i++) {
-        const option = document.createElement("option");
-        option.value = i;
-        option.textContent = `Sarga ${i}`;
-        this.sargaSelect.appendChild(option);
-      }
-    },
-
-    loadCSV() {
-      fetch("transcript.csv")
-        .then((response) => response.text())
-        .then((csvText) => {
-          Papa.parse(csvText, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => this.processCSVData(results.data),
+        processCSVData(data) {
+          this.transcriptData = {};
+          this.timestamps = {};
+          data.forEach((row) => {
+            const kanda = String(row.Kanda).trim();
+            const sarga = String(row.Sarga).trim();
+            const sloka = String(row.Sloka).trim();
+            if (!this.transcriptData[kanda]) {
+              this.transcriptData[kanda] = {};
+            }
+            if (!this.transcriptData[kanda][sarga]) {
+              this.transcriptData[kanda][sarga] = [];
+            }
+            this.transcriptData[kanda][sarga].push(sloka);
           });
-        })
-        .catch((error) => console.error("Error loading CSV:", error));
-    },
+        },
 
-    processCSVData(data) {
-      this.transcriptData = {};
-      data.forEach((row) => {
-        const kanda = String(row.Kanda).trim();
-        const sarga = String(row.Sarga).trim();
-        const sloka = String(row.Sloka).trim();
-        if (!this.transcriptData[kanda]) {
-          this.transcriptData[kanda] = {};
-        }
-        if (!this.transcriptData[kanda][sarga]) {
-          this.transcriptData[kanda][sarga] = [];
-        }
-        // Each sloka is stored as an object with a "start" property.
-        this.transcriptData[kanda][sarga].push({ sloka: sloka, start: null });
-      });
-    },
+        loadAudioAndTranscript() {
+          const kanda = this.kandaSelect.value;
+          const sarga = this.sargaSelect.value;
+          if (!kanda || !sarga) {
+            alert("Please select both Kanda and Sarga.");
+            return;
+          }
+          this.audioSource.src = `SwaraSangraha/ramayana/audio/${kanda}/${sarga}.mp3`;
+          this.audioPlayer.load();
+          this.loadTranscript();
+          this.activeIndex = -1;
+          this.updateActiveLine(-1);
+          this.timestamps = {};
+          this.updateTimestampDisplay();
+        },
 
-    // Helper to get the currently loaded transcript array.
-    getCurrentTranscript() {
-      const kanda = this.kandaSelect.value;
-      const sarga = this.sargaSelect.value;
-      if (this.transcriptData[kanda] && this.transcriptData[kanda][sarga]) {
-        return this.transcriptData[kanda][sarga];
-      }
-      return null;
-    },
+        loadTranscript() {
+          const kanda = this.kandaSelect.value;
+          const sarga = this.sargaSelect.value;
+          this.transcriptList.innerHTML = "";
+          if (
+            !this.transcriptData[kanda] ||
+            !this.transcriptData[kanda][sarga]
+          ) {
+            console.error(
+              `No transcript data for Kanda ${kanda}, Sarga ${sarga}`
+            );
+            return;
+          }
+          const lines = this.transcriptData[kanda][sarga];
+          lines.forEach((line, index) => {
+            if (!(index in this.timestamps)) {
+              this.timestamps[index] = null;
+            }
+            const listItem = this.createTranscriptLine(line, index);
+            this.transcriptList.appendChild(listItem);
+          });
+        },
 
-    loadAudioAndTranscript() {
-      const kanda = this.kandaSelect.value;
-      const sarga = this.sargaSelect.value;
-      if (!kanda || !sarga) {
-        alert("Please select both Kanda and Sarga.");
-        return;
-      }
-      this.audioSource.src = `new_audio/${kanda}/${sarga}.mp3`;
-      this.audioPlayer.load();
-      // Reset start times for the loaded transcript.
-      const transcript = this.getCurrentTranscript();
-      if (transcript) {
-        transcript.forEach((item) => (item.start = null));
-      }
-      this.loadTranscript();
-      this.activeIndex = -1;
-      this.updateActiveLine(-1);
-      this.updateTimestampDisplay();
-    },
+        createTranscriptLine(line, index) {
+          const listItem = document.createElement("li");
+          listItem.className =
+            "list-group-item d-flex align-items-center justify-content-between";
 
-    loadTranscript() {
-      const transcript = this.getCurrentTranscript();
-      this.transcriptList.innerHTML = "";
-      if (!transcript) {
-        console.error("No transcript data for the selected Kanda and Sarga");
-        return;
-      }
-      transcript.forEach((lineObj, index) => {
-        const listItem = this.createTranscriptLine(lineObj, index);
-        this.transcriptList.appendChild(listItem);
-      });
-    },
+          // Create buttons and inputs
+          const resetBtn = document.createElement("a");
+          resetBtn.className = "mx-2 fs-4 resetBtn";
+          resetBtn.style.cursor = "pointer";
+          resetBtn.innerHTML = '<i class="bi bi-x"></i>';
+          resetBtn.addEventListener("click", () =>
+            this.resetStartTime(index)
+          );
 
-    createTranscriptLine(lineObj, index) {
-      const listItem = document.createElement("li");
-      listItem.className = "list-group-item d-flex align-items-center justify-content-between";
-
-      // Reset button
-      const resetBtn = document.createElement("a");
-      resetBtn.className = "mx-2 fs-4 resetBtn";
-      resetBtn.style.cursor = "pointer";
-      resetBtn.innerHTML = '<i class="bi bi-x"></i>';
-      resetBtn.addEventListener("click", () => this.resetStartTime(index));
-
-      // Start time display
-      const timestampInput = document.createElement("input");
-      timestampInput.type = "text";
-      timestampInput.className = "timestamp form-control form-control-sm";
-      timestampInput.style.width = "80px";
-      timestampInput.readOnly = true;
-      timestampInput.disabled = true;
-      timestampInput.value = lineObj.start ? this.formatTime(lineObj.start) : "--:--:--";
-
-      // Minus button
-      const minusBtn = document.createElement("a");
-      minusBtn.className = "mx-2 fs-4 minusBtn";
-      minusBtn.style.cursor = "pointer";
-      minusBtn.innerHTML = '<i class="bi bi-dash"></i>';
-      minusBtn.addEventListener("click", () => this.adjustStart(index, -250));
-
-      // Plus button
-      const plusBtn = document.createElement("a");
-      plusBtn.className = "mx-2 fs-4 plusBtn";
-      plusBtn.style.cursor = "pointer";
-      plusBtn.innerHTML = '<i class="bi bi-plus"></i>';
-      plusBtn.addEventListener("click", () => this.adjustStart(index, 250));
-
-      // Play button
-      const playBtn = document.createElement("a");
-      playBtn.className = "mx-2 fs-4 playBtn";
-      playBtn.style.cursor = "pointer";
-      playBtn.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
-      playBtn.addEventListener("click", () => this.playFromStart(index));
-
-      // Text input for the transcript line
-      const textInput = document.createElement("input");
-      textInput.type = "text";
-      textInput.className = "form-control mx-2";
-      textInput.value = lineObj.sloka;
-
-      // Delete button
-      const deleteBtn = document.createElement("a");
-      deleteBtn.className = "mx-2 fs-4 deleteBtn";
-      deleteBtn.style.cursor = "pointer";
-      deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-      deleteBtn.addEventListener("click", () => this.deleteLine(index));
-
-      // Add button
-      const addBtn = document.createElement("a");
-      addBtn.className = "mx-2 fs-4 addBtn";
-      addBtn.style.cursor = "pointer";
-      addBtn.innerHTML = '<i class="bi bi-plus-circle-fill"></i>';
-      addBtn.addEventListener("click", () => this.addLine(index));
-
-      listItem.append(
-        resetBtn,
-        timestampInput,
-        minusBtn,
-        plusBtn,
-        playBtn,
-        textInput,
-        deleteBtn,
-        addBtn
-      );
-      return listItem;
-    },
-
-    formatTime(ms) {
-      const minutes = Math.floor(ms / 60000).toString().padStart(2, "0");
-      const seconds = Math.floor((ms % 60000) / 1000).toString().padStart(2, "0");
-      const centiseconds = Math.floor((ms % 1000) / 10).toString().padStart(2, "0");
-      return `${minutes}:${seconds}:${centiseconds}`;
-    },
-
-    adjustStart(index, offset) {
-      const transcript = this.getCurrentTranscript();
-      if (transcript && transcript[index].start !== null) {
-        const newTime = transcript[index].start + offset;
-        if (
-          newTime >= 0 &&
-          (index === 0 ||
-            transcript[index - 1].start === null ||
-            newTime >= transcript[index - 1].start) &&
-          newTime <= this.audioPlayer.duration * 1000
-        ) {
-          transcript[index].start = newTime;
-          this.audioPlayer.currentTime = newTime / 1000;
-        }
-      }
-      this.updateTimestampDisplay();
-    },
-
-    playFromStart(index) {
-      const transcript = this.getCurrentTranscript();
-      if (transcript && transcript[index].start !== null) {
-        this.audioPlayer.currentTime = transcript[index].start / 1000;
-        this.audioPlayer.play();
-      }
-    },
-
-    resetStartTime(index) {
-      const transcript = this.getCurrentTranscript();
-      if (transcript) {
-        transcript[index].start = null;
-        this.updateActiveLine(index - 1);
-        this.updateTimestampDisplay();
-      }
-    },
-
-    updateActiveLine(newIndex) {
-      const transcriptItems = this.transcriptList.children;
-      if (this.activeIndex >= 0 && this.activeIndex < transcriptItems.length) {
-        transcriptItems[this.activeIndex].classList.remove("active-line");
-      }
-      if (newIndex >= 0 && newIndex < transcriptItems.length) {
-        transcriptItems[newIndex].classList.add("active-line");
-        this.activeIndex = newIndex;
-      } else {
-        this.activeIndex = -1;
-      }
-      const activeItem = this.transcriptList.querySelector(".active-line");
-      if (activeItem) {
-        activeItem.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    },
-
-    updateTimestampDisplay() {
-      const transcript = this.getCurrentTranscript();
-      Array.from(this.transcriptList.children).forEach((item, i) => {
-        const timestampInput = item.querySelector(".timestamp");
-        timestampInput.value =
-          transcript && transcript[i].start
-            ? this.formatTime(transcript[i].start)
+          const timestampInput = document.createElement("input");
+          timestampInput.type = "text";
+          timestampInput.className = "timestamp form-control form-control-sm";
+          timestampInput.style.width = "80px";
+          timestampInput.readOnly = true;
+          timestampInput.disabled = true;
+          timestampInput.value = this.timestamps[index]
+            ? this.formatTime(this.timestamps[index])
             : "--:--:--";
-      });
-    },
 
-    downloadTranscript() {
-      const kanda = this.kandaSelect.value;
-      const sarga = this.sargaSelect.value;
-      if (!kanda || !sarga) {
-        alert("Please select both Kanda and Sarga.");
-        return;
-      }
-      const transcript = this.getCurrentTranscript();
-      let csvContent = "data:text/csv;charset=utf-8,start,sloka\n";
-      transcript.forEach((lineObj) => {
-        const start =
-          lineObj.start !== null ? this.formatTime(lineObj.start) : "";
-        csvContent += `${start},"${lineObj.sloka.replace(/"/g, '""')}"\n`;
-      });
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.href = encodedUri;
-      link.download = `transcript_kanda${kanda}_sarga${sarga}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    },
+          const minusBtn = document.createElement("a");
+          minusBtn.className = "mx-2 fs-4 minusBtn";
+          minusBtn.style.cursor = "pointer";
+          minusBtn.innerHTML = '<i class="bi bi-dash"></i>';
+          minusBtn.addEventListener("click", () =>
+            this.adjustTimestamp(index, -250)
+          );
 
-    handleTimeUpdate() {
-      const transcript = this.getCurrentTranscript();
-      if (!transcript) return;
-      const currentTime = this.audioPlayer.currentTime * 1000;
-      let newIndex = -1;
-      for (let i = 0; i < transcript.length; i++) {
-        if (transcript[i].start !== null && currentTime >= transcript[i].start) {
-          newIndex = i;
-        } else {
-          break;
-        }
-      }
-      if (newIndex !== this.activeIndex) {
-        this.updateActiveLine(newIndex);
-      }
-    },
+          const plusBtn = document.createElement("a");
+          plusBtn.className = "mx-2 fs-4 plusBtn";
+          plusBtn.style.cursor = "pointer";
+          plusBtn.innerHTML = '<i class="bi bi-plus"></i>';
+          plusBtn.addEventListener("click", () =>
+            this.adjustTimestamp(index, 250)
+          );
 
-    handleKeydown(event) {
-      const transcript = this.getCurrentTranscript();
-      if (!transcript) return;
-      
-      switch (event.key) {
-        case " ":
-          if (event.shiftKey) {
-            event.preventDefault();
-            this.audioPlayer.paused ? this.audioPlayer.play() : this.audioPlayer.pause();
-          }
-          break;
-        case "ArrowDown": {
-          const transcriptLength = transcript.length;
-          if (this.activeIndex < transcriptLength - 1) {
-            this.updateActiveLine(this.activeIndex + 1);
-            transcript[this.activeIndex].start = this.audioPlayer.currentTime * 1000;
-          }
-          break;
-        }
-        case "ArrowUp":
-          if (this.activeIndex > 0) {
-            transcript[this.activeIndex].start = null;
-            this.updateActiveLine(this.activeIndex - 1);
-          } else if (this.activeIndex === 0) {
-            transcript[this.activeIndex].start = null;
-            this.updateActiveLine(-1);
-          }
-          break;
-        case "ArrowLeft":
-          if (transcript[this.activeIndex] && transcript[this.activeIndex].start !== null) {
-            const newTime = transcript[this.activeIndex].start - 250;
+          const playBtn = document.createElement("a");
+          playBtn.className = "mx-2 fs-4 playBtn";
+          playBtn.style.cursor = "pointer";
+          playBtn.innerHTML = '<i class="bi bi-play-circle-fill"></i>';
+          playBtn.addEventListener("click", () =>
+            this.playFromTimestamp(index)
+          );
+
+          const textInput = document.createElement("input");
+          textInput.type = "text";
+          textInput.className = "form-control mx-2";
+          textInput.value = line;
+
+          const deleteBtn = document.createElement("a");
+          deleteBtn.className = "mx-2 fs-4 deleteBtn";
+          deleteBtn.style.cursor = "pointer";
+          deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+          deleteBtn.addEventListener("click", () => this.deleteLine(index));
+
+          const addBtn = document.createElement("a");
+          addBtn.className = "mx-2 fs-4 addBtn";
+          addBtn.style.cursor = "pointer";
+          addBtn.innerHTML = '<i class="bi bi-plus-circle-fill"></i>';
+          addBtn.addEventListener("click", () => this.addLine(index));
+
+          const flagBtn = document.createElement("a");
+          flagBtn.className = "mx-2 fs-4 flagBtn";
+          flagBtn.style.cursor = "pointer";
+          flagBtn.innerHTML = `<i class="bi ${this.flags[index] ? 'bi-flag-fill' : 'bi-flag'}"></i>`;
+
+          flagBtn.addEventListener("click", () => {
+            const modal = new bootstrap.Modal(document.getElementById("flagModal"));
+            modal.show();
+
+            // Populate modal with existing values (if any)
+            const flagData = this.flags[index] || {};
+            document.getElementById("flagReasons").value = null;
+            document.getElementById("flagComment").value = flagData.comment || "";
+            Array.from(document.getElementById("flagReasons").options).forEach((opt) => {
+              opt.selected = flagData.reasons?.includes(opt.value);
+            });
+
+            document.getElementById("submitFlagBtn").onclick = () => {
+              const reasons = Array.from(document.getElementById("flagReasons").selectedOptions).map(o => o.value);
+              const comment = document.getElementById("flagComment").value;
+
+              if (reasons.length > 0 || comment.trim()) {
+                TranscriptApp.flags[index] = { reasons, comment };
+                flagBtn.innerHTML = '<i class="bi bi-flag-fill"></i>';
+              } else {
+                delete TranscriptApp.flags[index];
+                flagBtn.innerHTML = '<i class="bi bi-flag"></i>';
+              }
+
+              // Clear modal
+              document.getElementById("flagReasons").selectedIndex = -1;
+              document.getElementById("flagComment").value = '';
+            };
+          });
+          // Append all elements
+          listItem.append(
+            resetBtn,
+            timestampInput,
+            minusBtn,
+            plusBtn,
+            playBtn,
+            textInput,
+            deleteBtn,
+            addBtn,
+            flagBtn
+          );
+          return listItem;
+        },
+
+        formatTime(ms) {
+          const minutes = Math.floor(ms / 60000)
+            .toString()
+            .padStart(2, "0");
+          const seconds = Math.floor((ms % 60000) / 1000)
+            .toString()
+            .padStart(2, "0");
+          const centiseconds = Math.floor((ms % 1000) / 10)
+            .toString()
+            .padStart(2, "0");
+          return `${minutes}:${seconds}:${centiseconds}`;
+        },
+
+        adjustTimestamp(index, offset) {
+          if (this.timestamps[index] !== null) {
+            const newTime = this.timestamps[index] + offset;
             if (
               newTime >= 0 &&
-              (this.activeIndex === 0 ||
-                transcript[this.activeIndex - 1].start === null ||
-                newTime >= transcript[this.activeIndex - 1].start)
+              (index === 0 || newTime >= this.timestamps[index - 1]) &&
+              newTime <= this.audioPlayer.duration * 1000
             ) {
-              transcript[this.activeIndex].start = newTime;
+              this.timestamps[index] = newTime;
               this.audioPlayer.currentTime = newTime / 1000;
             }
           }
-          break;
-        case "ArrowRight":
-          if (transcript[this.activeIndex] && transcript[this.activeIndex].start !== null) {
-            const newTime = transcript[this.activeIndex].start + 250;
-            if (newTime <= this.audioPlayer.duration * 1000) {
-              transcript[this.activeIndex].start = newTime;
-              this.audioPlayer.currentTime = newTime / 1000;
+          this.updateTimestampDisplay();
+        },
+
+        playFromTimestamp(index) {
+          if (this.timestamps[index] !== null) {
+            this.audioPlayer.currentTime = this.timestamps[index] / 1000;
+            this.audioPlayer.play();
+          }
+        },
+
+        resetStartTime(index) {
+          this.timestamps[index] = null;
+          this.updateActiveLine(index - 1);
+          this.updateTimestampDisplay();
+        },
+
+        updateActiveLine(newIndex) {
+          const transcriptItems = this.transcriptList.children;
+          if (
+            this.activeIndex >= 0 &&
+            this.activeIndex < transcriptItems.length
+          ) {
+            transcriptItems[this.activeIndex].classList.remove("active-line");
+          }
+          if (newIndex >= 0 && newIndex < transcriptItems.length) {
+            transcriptItems[newIndex].classList.add("active-line");
+            this.activeIndex = newIndex;
+          } else {
+            this.activeIndex = -1;
+          }
+          const activeItem =
+            this.transcriptList.querySelector(".active-line");
+          if (activeItem) {
+            activeItem.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
+        },
+
+        updateTimestampDisplay() {
+          Array.from(this.transcriptList.children).forEach((item, i) => {
+            const timestampInput = item.querySelector(".timestamp");
+            timestampInput.value = this.timestamps[i]
+              ? this.formatTime(this.timestamps[i])
+              : "--:--:--";
+          });
+        },
+
+        downloadTranscript() {
+          const kanda = this.kandaSelect.value;
+          const sarga = this.sargaSelect.value;
+          if (!kanda || !sarga) {
+            alert("Please select both Kanda and Sarga.");
+            return;
+          }
+          if (!(index in this.flags)) {
+            this.flags[index] = null;
+          }
+          const lines = this.transcriptData[kanda][sarga];
+          let csvContent = "data:text/csv;charset=utf-8,start,sloka,flags,comment\n";
+          lines.forEach((line, index) => {
+            const timestamp =
+              this.timestamps[index] !== null
+                ? this.formatTime(this.timestamps[index])
+                : "";
+            csvContent += `${timestamp},"${line.replace(/"/g, '""')}"\n`;
+            const flag = this.flags[index];
+            const flagStr = flag ? `"${flag.reasons.join(';')}"` : "";
+            const commentStr = flag?.comment ? `"${flag.comment.replace(/"/g, '""')}"` : "";
+            csvContent += `${timestamp},"${line.replace(/"/g, '""')}",${flagStr},${commentStr}\n`;
+          });
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.href = encodedUri;
+          link.download = `transcript_kanda${kanda}_sarga${sarga}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        },
+
+        handleTimeUpdate() {
+          const currentTime = this.audioPlayer.currentTime * 1000;
+          let newIndex = -1;
+          const keys = Object.keys(this.timestamps).map(Number);
+          for (let i = 0; i < keys.length; i++) {
+            if (
+              this.timestamps[keys[i]] !== null &&
+              currentTime >= this.timestamps[keys[i]]
+            ) {
+              newIndex = keys[i];
+            } else {
+              break;
             }
           }
-          break;
-      }
-      this.updateTimestampDisplay();
-    },
-  };
+          if (newIndex !== this.activeIndex) {
+            this.updateActiveLine(newIndex);
+          }
+        },
 
-  document.addEventListener("DOMContentLoaded", () => TranscriptApp.init());
-})();
+        addLine(index) {
+          // Implement addition logic as needed.
+          console.log("Add line after index:", index);
+        },
 
-    </script>
-  </body>
+        deleteLine(index) {
+          // Implement deletion logic as needed.
+          console.log("Delete line at index:", index);
+        },
+
+        handleKeydown(event) {
+          switch (event.key) {
+            case " ":
+              if (event.shiftKey) {
+                event.preventDefault();
+                this.audioPlayer.paused
+                  ? this.audioPlayer.play()
+                  : this.audioPlayer.pause();
+              }
+              break;
+            case "ArrowDown": {
+              const transcriptLength = this.transcriptList.children.length;
+              if (this.activeIndex < transcriptLength - 1) {
+                this.updateActiveLine(this.activeIndex + 1);
+                this.timestamps[this.activeIndex] =
+                  this.audioPlayer.currentTime * 1000;
+              }
+              break;
+            }
+            case "ArrowUp":
+              if (this.activeIndex > 0) {
+                this.timestamps[this.activeIndex] = null;
+                this.updateActiveLine(this.activeIndex - 1);
+              } else if (this.activeIndex === 0) {
+                this.timestamps[this.activeIndex] = null;
+                this.updateActiveLine(-1);
+              }
+              break;
+            case "ArrowLeft":
+              if (this.activeIndex in this.timestamps) {
+                const newTime = this.timestamps[this.activeIndex] - 250;
+                if (
+                  newTime >= 0 &&
+                  (this.activeIndex === 0 ||
+                    newTime >= this.timestamps[this.activeIndex - 1])
+                ) {
+                  this.timestamps[this.activeIndex] = newTime;
+                  this.audioPlayer.currentTime = newTime / 1000;
+                }
+              }
+              break;
+            case "ArrowRight":
+              if (this.activeIndex in this.timestamps) {
+                const newTime = this.timestamps[this.activeIndex] + 250;
+                if (newTime <= this.audioPlayer.duration * 1000) {
+                  this.timestamps[this.activeIndex] = newTime;
+                  this.audioPlayer.currentTime = newTime / 1000;
+                }
+              }
+              break;
+          }
+          this.updateTimestampDisplay();
+        },
+      };
+
+      document.addEventListener("DOMContentLoaded", () =>
+        TranscriptApp.init()
+      );
+    })();
+  </script>
+</body>
+
 </html>
