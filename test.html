@@ -458,22 +458,29 @@
             alert("Please select both Kanda and Sarga.");
             return;
           }
-          if (!(index in this.flags)) {
-            this.flags[index] = null;
-          }
+
           const lines = this.transcriptData[kanda][sarga];
           let csvContent = "data:text/csv;charset=utf-8,start,sloka,flags,comment\n";
+
           lines.forEach((line, index) => {
-            const timestamp =
-              this.timestamps[index] !== null
-                ? this.formatTime(this.timestamps[index])
-                : "";
-            csvContent += `${timestamp},"${line.replace(/"/g, '""')}"\n`;
+            const timestamp = this.timestamps[index] !== null
+              ? this.formatTime(this.timestamps[index])
+              : "";
+
+            const slokaText = `"${line.replace(/"/g, '""')}"`;
             const flag = this.flags[index];
-            const flagStr = flag ? `"${flag.reasons.join(';')}"` : "";
-            const commentStr = flag?.comment ? `"${flag.comment.replace(/"/g, '""')}"` : "";
-            csvContent += `${timestamp},"${line.replace(/"/g, '""')}",${flagStr},${commentStr}\n`;
+
+            const flagStr = flag && Array.isArray(flag.reasons)
+              ? `"${flag.reasons.map(r => r.replace(/"/g, '""')).join(';')}"`
+              : "";
+
+            const commentStr = flag?.comment
+              ? `"${flag.comment.replace(/"/g, '""')}"`
+              : "";
+
+            csvContent += `${timestamp},${slokaText},${flagStr},${commentStr}\n`;
           });
+
           const encodedUri = encodeURI(csvContent);
           const link = document.createElement("a");
           link.href = encodedUri;
@@ -482,7 +489,6 @@
           link.click();
           document.body.removeChild(link);
         },
-
         handleTimeUpdate() {
           const currentTime = this.audioPlayer.currentTime * 1000;
           let newIndex = -1;
