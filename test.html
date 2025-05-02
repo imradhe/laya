@@ -193,7 +193,7 @@
         },
 
         loadCSV() {
-          fetch("SwaraSangraha/ramayana/transcript.csv")
+          fetch("SwaraSangraha/ramayana/ramayana_word_data.csv")
             .then((response) => response.text())
             .then((csvText) => {
               Papa.parse(csvText, {
@@ -206,30 +206,18 @@
         },
 
         processCSVData(data) {
-          this.transcriptData = {};
+          this.transcriptData = [];
           this.timestamps = {};
-          data.forEach((row) => {
-            const kanda = String(row.Kanda).trim();
-            const sarga = String(row.Sarga).trim();
-            const sloka = String(row.Sloka).trim();
-            if (!this.transcriptData[kanda]) {
-              this.transcriptData[kanda] = {};
-            }
-            if (!this.transcriptData[kanda][sarga]) {
-              this.transcriptData[kanda][sarga] = [];
-            }
-            this.transcriptData[kanda][sarga].push(sloka);
+          data.forEach((row, index) => {
+            const word = String(row.Word).trim();
+            const startTime = parseFloat(row["Word Start"]) * 1000; // assuming in seconds
+            this.transcriptData.push(word);
+            this.timestamps[index] = isNaN(startTime) ? null : startTime;
           });
         },
 
         loadAudioAndTranscript() {
-          const kanda = this.kandaSelect.value;
-          const sarga = this.sargaSelect.value;
-          if (!kanda || !sarga) {
-            alert("Please select both Kanda and Sarga.");
-            return;
-          }
-          this.audioSource.src = `SwaraSangraha/ramayana/audio/${kanda}/${sarga}.mp3`;
+          this.audioSource.src = `SwaraSangraha/ramayana/audio.mp3`;
           this.audioPlayer.load();
           this.loadTranscript();
           this.activeIndex = -1;
@@ -239,24 +227,9 @@
         },
 
         loadTranscript() {
-          const kanda = this.kandaSelect.value;
-          const sarga = this.sargaSelect.value;
           this.transcriptList.innerHTML = "";
-          if (
-            !this.transcriptData[kanda] ||
-            !this.transcriptData[kanda][sarga]
-          ) {
-            console.error(
-              `No transcript data for Kanda ${kanda}, Sarga ${sarga}`
-            );
-            return;
-          }
-          const lines = this.transcriptData[kanda][sarga];
-          lines.forEach((line, index) => {
-            if (!(index in this.timestamps)) {
-              this.timestamps[index] = null;
-            }
-            const listItem = this.createTranscriptLine(line, index);
+          this.transcriptData.forEach((word, index) => {
+            const listItem = this.createTranscriptLine(word, index);
             this.transcriptList.appendChild(listItem);
           });
         },
@@ -452,22 +425,14 @@
         },
 
         downloadTranscript() {
-          const kanda = this.kandaSelect.value;
-          const sarga = this.sargaSelect.value;
-          if (!kanda || !sarga) {
-            alert("Please select both Kanda and Sarga.");
-            return;
-          }
+          let csvContent = "data:text/csv;charset=utf-8,start,word,flags,comment\n";
 
-          const lines = this.transcriptData[kanda][sarga];
-          let csvContent = "data:text/csv;charset=utf-8,start,sloka,flags,comment\n";
-
-          lines.forEach((line, index) => {
+          this.transcriptData.forEach((word, index) => {
             const timestamp = this.timestamps[index] !== null
               ? this.formatTime(this.timestamps[index])
               : "";
 
-            const slokaText = `"${line.replace(/"/g, '""')}"`;
+            const wordText = `"${word.replace(/"/g, '""')}"`;
             const flag = this.flags[index];
 
             const flagStr = flag && Array.isArray(flag.reasons)
@@ -478,13 +443,13 @@
               ? `"${flag.comment.replace(/"/g, '""')}"`
               : "";
 
-            csvContent += `${timestamp},${slokaText},${flagStr},${commentStr}\n`;
+            csvContent += `${timestamp},${wordText},${flagStr},${commentStr}\n`;
           });
 
           const encodedUri = encodeURI(csvContent);
           const link = document.createElement("a");
           link.href = encodedUri;
-          link.download = `transcript_kanda${kanda}_sarga${sarga}.csv`;
+          link.download = `transcript.csv`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
