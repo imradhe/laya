@@ -226,12 +226,36 @@
           this.updateTimestampDisplay();
         },
 
+        virtualStartIndex: 0,
+        virtualEndIndex: 100,
+
         loadTranscript() {
           this.transcriptList.innerHTML = "";
-          this.transcriptData.forEach((word, index) => {
-            const listItem = this.createTranscriptLine(word, index);
-            this.transcriptList.appendChild(listItem);
+          const VISIBLE_COUNT = 100;
+          this.virtualStartIndex = 0;
+          this.virtualEndIndex = VISIBLE_COUNT;
+          this.virtualRender();
+
+          this.transcriptList.addEventListener("scroll", () => {
+            const scrollTop = this.transcriptList.scrollTop;
+            const itemHeight = 40; // approximate height per line
+            const startIndex = Math.floor(scrollTop / itemHeight);
+            if (startIndex !== this.virtualStartIndex) {
+              this.virtualStartIndex = startIndex;
+              this.virtualEndIndex = Math.min(startIndex + VISIBLE_COUNT, this.transcriptData.length);
+              this.virtualRender();
+            }
           });
+        },
+
+        virtualRender() {
+          this.transcriptList.innerHTML = "";
+          const fragment = document.createDocumentFragment();
+          for (let i = this.virtualStartIndex; i < this.virtualEndIndex; i++) {
+            const listItem = this.createTranscriptLine(this.transcriptData[i], i);
+            fragment.appendChild(listItem);
+          }
+          this.transcriptList.appendChild(fragment);
         },
 
         createTranscriptLine(line, index) {
