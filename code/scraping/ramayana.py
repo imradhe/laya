@@ -6,6 +6,7 @@ import time
 import random
 import traceback
 from tqdm import tqdm
+import json
 
 # Define the base URL
 BASE_URL = "https://hrishikeshrt.github.io/audio_alignment/corpus/ramayana/"
@@ -31,11 +32,8 @@ os.makedirs(os.path.dirname(sentence_csv_file), exist_ok=True)
 os.makedirs(os.path.dirname(word_csv_file), exist_ok=True)
 os.makedirs(audio_directory, exist_ok=True)
 
-with open(sentence_csv_file, "w", encoding="utf-8") as f:
-    f.write("Kanda,Sarga,Sentence,Sentence Start,Sentence End\n")
-
-with open(word_csv_file, "w", encoding="utf-8") as f:
-    f.write("Kanda,Sarga,Word,Word Start,Word End\n")
+sentence_data = []
+word_data = []
 
 def log_error(message):
     with open(log_file, "a", encoding="utf-8") as log:
@@ -88,8 +86,13 @@ def scrape_data():
                         sentence_begin = sentence.get("data-begin", "")
                         sentence_end = sentence.get("data-end", "")
                         
-                        with open(sentence_csv_file, "a", encoding="utf-8") as f:
-                            f.write(f"{kanda},{sarga},{sentence_text},{sentence_begin},{sentence_end}\n")
+                        sentence_data.append({
+                            "Kanda": kanda,
+                            "Sarga": sarga,
+                            "Sentence": sentence_text,
+                            "Sentence Start": sentence_begin,
+                            "Sentence End": sentence_end
+                        })
                     
                         # Extract word units inside sentence
                         for word in sentence.find_all(class_="word-unit"):
@@ -98,8 +101,13 @@ def scrape_data():
                                 word_begin = word.get("data-begin", "")
                                 word_end = word.get("data-end", "")
                                 
-                                with open(word_csv_file, "a", encoding="utf-8") as f:
-                                    f.write(f"{kanda},{sarga},{word_text},{word_begin},{word_end}\n")
+                                word_data.append({
+                                    "Kanda": kanda,
+                                    "Sarga": sarga,
+                                    "Word": word_text,
+                                    "Word Start": word_begin,
+                                    "Word End": word_end
+                                })
                             except Exception as e:
                                 log_error(f"Error processing word in {url}: {e}")
                     except Exception as e:
@@ -109,21 +117,28 @@ def scrape_data():
                 log_error(f"Error processing {url}: {e}")
             
             # Uncomment the below code to download audio files
-            audio_file = soup.find("audio")
-            if audio_file and audio_file.get("src"):
-                audio_url = audio_file["src"]
-                audio_filename = os.path.join(audio_directory, f"{kanda}/{sarga}.mp3")
-                os.makedirs(os.path.dirname(audio_filename), exist_ok=True)
+            # audio_file = soup.find("audio")
+            # if audio_file and audio_file.get("src"):
+            #     audio_url = audio_file["src"]
+            #     audio_filename = os.path.join(audio_directory, f"{kanda}/{sarga}.mp3")
+            #     os.makedirs(os.path.dirname(audio_filename), exist_ok=True)
 
-                response = fetch_url(audio_url)
-                if response:
-                    with open(audio_filename, "wb") as f:
-                        f.write(response.content)
-                else:
-                    log_error(f"Failed to fetch audio file {audio_url} for {kanda}/{sarga}")
+            #     response = fetch_url(audio_url)
+            #     if response:
+            #         with open(audio_filename, "wb") as f:
+            #             f.write(response.content)
+            #     else:
+            #         log_error(f"Failed to fetch audio file {audio_url} for {kanda}/{sarga}")
 
             # Sleep to avoid excessive requests
             time.sleep(1)
+
+    with open(sentence_csv_file.replace(".csv", ".json"), "w", encoding="utf-8") as f:
+        json.dump(sentence_data, f, ensure_ascii=False, indent=2)
+
+    with open(word_csv_file.replace(".csv", ".json"), "w", encoding="utf-8") as f:
+        json.dump(word_data, f, ensure_ascii=False, indent=2)
+
     print("Data scraping completed.")
 
 # Run the scraper

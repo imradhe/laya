@@ -50,8 +50,12 @@
 
 <body>
   <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
+    <div class="spinner-border text-primary mb-2" role="status">
       <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="progress mx-auto" style="width: 200px;">
+      <div id="loadingProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+        style="width: 0%">0%</div>
     </div>
   </div>
   <div class="container d-flex justify-content-center align-items-center mt-3">
@@ -198,7 +202,7 @@
         },
 
         loadCSV() {
-          fetch("SwaraSangraha/ramayana/ramayana_word_data.csv")
+          fetch("SwaraSangraha/ramayana2/sentence_data.csv")
             .then((response) => response.text())
             .then((csvText) => {
               Papa.parse(csvText, {
@@ -214,23 +218,33 @@
           this.transcriptData = {};
           this.timestamps = {};
           data.forEach((row, index) => {
-            const kanda = row.Kanda;
-            const sarga = row.Sarga;
-            const word = String(row.Word).trim();
-            const startTime = parseFloat(row["Word Start"]) * 1000;
+            // Debug: log row before processing
+            console.debug("Processing row", index, row);
+            const kanda = parseInt(row.Kanda);
+            const sarga = parseInt(row.Sarga);
+            const sentence = String(row.Sentence).trim();
+            const startTime = parseFloat(row["Sentence Start"]) * 1000;
 
-            if (!this.transcriptData[kanda]) {
-              this.transcriptData[kanda] = {};
-              this.timestamps[kanda] = {};
-            }
-            if (!this.transcriptData[kanda][sarga]) {
-              this.transcriptData[kanda][sarga] = [];
-              this.timestamps[kanda][sarga] = {};
+            if (!Number.isInteger(kanda) || !Number.isInteger(sarga) || !sentence) {
+              console.warn("Skipping row", index, row);
+              return;
             }
 
-            const wordIndex = this.transcriptData[kanda][sarga].length;
-            this.transcriptData[kanda][sarga].push(word);
-            this.timestamps[kanda][sarga][wordIndex] = isNaN(startTime) ? null : startTime;
+            const kandaKey = String(kanda);
+            const sargaKey = String(sarga);
+
+            if (!this.transcriptData[kandaKey]) {
+              this.transcriptData[kandaKey] = {};
+              this.timestamps[kandaKey] = {};
+            }
+            if (!this.transcriptData[kandaKey][sargaKey]) {
+              this.transcriptData[kandaKey][sargaKey] = [];
+              this.timestamps[kandaKey][sargaKey] = {};
+            }
+
+            const sentenceIndex = this.transcriptData[kandaKey][sargaKey].length;
+            this.transcriptData[kandaKey][sargaKey].push(sentence);
+            this.timestamps[kandaKey][sargaKey][sentenceIndex] = isNaN(startTime) ? null : startTime;
           });
         },
 
@@ -243,7 +257,7 @@
             return;
           }
 
-          this.audioSource.src = `SwaraSangraha/ramayana/audio/${kanda}/${sarga}.mp3`;
+          this.audioSource.src = `SwaraSangraha/ramayana2/audio/${kanda}/${sarga}.mp3`;
           this.audioPlayer.load();
 
           this.currentKanda = kanda;
@@ -263,16 +277,36 @@
           this.transcriptList.innerHTML = "";
 
           const spinner = document.getElementById("loadingSpinner");
+          const progressBar = document.getElementById("loadingProgress");
           spinner.style.display = "block";
+          progressBar.style.width = "0%";
+          progressBar.textContent = "0%";
 
           const fragment = document.createDocumentFragment();
-          for (let i = 0; i < currentData.length; i++) {
-            const listItem = this.createTranscriptLine(currentData[i], i);
-            fragment.appendChild(listItem);
-          }
-          this.transcriptList.appendChild(fragment);
 
-          spinner.style.display = "none";
+          let i = 0;
+          const total = currentData.length;
+          const batchSize = 100;
+
+          const renderBatch = () => {
+            const end = Math.min(i + batchSize, total);
+            for (; i < end; i++) {
+              const listItem = this.createTranscriptLine(currentData[i], i);
+              fragment.appendChild(listItem);
+            }
+            const percent = Math.round((i / total) * 100);
+            progressBar.style.width = `${percent}%`;
+            progressBar.textContent = `${percent}%`;
+
+            if (i < total) {
+              requestAnimationFrame(renderBatch);
+            } else {
+              this.transcriptList.appendChild(fragment);
+              spinner.style.display = "none";
+            }
+          };
+
+          requestAnimationFrame(renderBatch);
         },
 
         createTranscriptLine(line, index) {
@@ -476,14 +510,14 @@
         downloadTranscript() {
           const kanda = this.currentKanda;
           const sarga = this.currentSarga;
-          let csvContent = "data:text/csv;charset=utf-8,start,word,flags,comment\n";
+          let csvContent = "data:text/csv;charset=utf-8,start,sentence,flags,comment\n";
           const currentData = this.transcriptData[kanda]?.[sarga] || [];
           for (let index = 0; index < currentData.length; index++) {
-            const word = currentData[index];
+            const sentence = currentData[index];
             const timestamp = this.timestamps[kanda][sarga][index] !== null
               ? this.formatTime(this.timestamps[kanda][sarga][index])
               : "";
-            const wordText = `"${word.replace(/"/g, '""')}"`;
+            const sentenceText = `"${sentence.replace(/"/g, '""')}"`;
             const flag = this.flags[index];
             const flagStr = flag && Array.isArray(flag.reasons)
               ? `"${flag.reasons.map(r => r.replace(/"/g, '""')).join(';')}"`
@@ -491,7 +525,7 @@
             const commentStr = flag?.comment
               ? `"${flag.comment.replace(/"/g, '""')}"`
               : "";
-            csvContent += `${timestamp},${wordText},${flagStr},${commentStr}\n`;
+            csvContent += `${timestamp},${sentenceText},${flagStr},${commentStr}\n`;
           }
           const encodedUri = encodeURI(csvContent);
           const link = document.createElement("a");
@@ -589,8 +623,10 @@
         },
       };
 
-      document.addEventListener("DOMContentLoaded", () =>
+      document.addEventListener("DOMContentLoaded", () => {
         TranscriptApp.init()
+        console.log(TranscriptApp);
+      }
       );
     })();
 
