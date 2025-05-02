@@ -49,6 +49,11 @@
 </head>
 
 <body>
+  <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
   <div class="container d-flex justify-content-center align-items-center mt-3">
     <div class="row mb-3">
       <div class="col-md-4">
@@ -250,9 +255,6 @@
           this.updateTimestampDisplay();
         },
 
-        virtualStartIndex: 0,
-        virtualEndIndex: 100,
-
         loadTranscript() {
           const kanda = this.currentKanda;
           const sarga = this.currentSarga;
@@ -260,35 +262,17 @@
           const currentData = this.transcriptData[kanda]?.[sarga] || [];
           this.transcriptList.innerHTML = "";
 
-          const VISIBLE_COUNT = 100;
-          this.virtualStartIndex = 0;
-          this.virtualEndIndex = VISIBLE_COUNT;
-          this.virtualRender();
+          const spinner = document.getElementById("loadingSpinner");
+          spinner.style.display = "block";
 
-          this.transcriptList.addEventListener("scroll", () => {
-            const scrollTop = this.transcriptList.scrollTop;
-            const itemHeight = 40; // approximate height per line
-            const startIndex = Math.floor(scrollTop / itemHeight);
-            if (startIndex !== this.virtualStartIndex) {
-              this.virtualStartIndex = startIndex;
-              this.virtualEndIndex = Math.min(startIndex + VISIBLE_COUNT, currentData.length);
-              this.virtualRender();
-            }
-          });
-        },
-
-        virtualRender() {
-          const kanda = this.currentKanda;
-          const sarga = this.currentSarga;
-          const currentData = this.transcriptData[kanda]?.[sarga] || [];
-
-          this.transcriptList.innerHTML = "";
           const fragment = document.createDocumentFragment();
-          for (let i = this.virtualStartIndex; i < this.virtualEndIndex; i++) {
+          for (let i = 0; i < currentData.length; i++) {
             const listItem = this.createTranscriptLine(currentData[i], i);
             fragment.appendChild(listItem);
           }
           this.transcriptList.appendChild(fragment);
+
+          spinner.style.display = "none";
         },
 
         createTranscriptLine(line, index) {
