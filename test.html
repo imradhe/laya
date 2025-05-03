@@ -202,16 +202,12 @@
         },
 
         loadCSV() {
-          fetch("SwaraSangraha/ramayana2/sentence_data.csv")
-            .then((response) => response.text())
-            .then((csvText) => {
-              Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => this.processCSVData(results.data),
-              });
+          fetch("SwaraSangraha/ramayana2/word_data.json")
+            .then((response) => response.json())
+            .then((data) => {
+              this.processJSONData(data);
             })
-            .catch((error) => console.error("Error loading CSV:", error));
+            .catch((error) => console.error("Error loading JSON:", error));
         },
 
         processCSVData(data) {
@@ -245,6 +241,38 @@
             const sentenceIndex = this.transcriptData[kandaKey][sargaKey].length;
             this.transcriptData[kandaKey][sargaKey].push(sentence);
             this.timestamps[kandaKey][sargaKey][sentenceIndex] = isNaN(startTime) ? null : startTime;
+          });
+        },
+
+        processJSONData(data) {
+          this.transcriptData = {};
+          this.timestamps = {};
+          data.forEach((row, index) => {
+            const kanda = parseInt(row.Kanda);
+            const sarga = parseInt(row.Sarga);
+            const word = String(row.Word).trim();
+            const startTime = parseFloat(row["Word Start"]) * 1000;
+
+            if (!Number.isInteger(kanda) || !Number.isInteger(sarga) || !word) {
+              console.warn("Skipping row", index, row);
+              return;
+            }
+
+            const kandaKey = String(kanda);
+            const sargaKey = String(sarga);
+
+            if (!this.transcriptData[kandaKey]) {
+              this.transcriptData[kandaKey] = {};
+              this.timestamps[kandaKey] = {};
+            }
+            if (!this.transcriptData[kandaKey][sargaKey]) {
+              this.transcriptData[kandaKey][sargaKey] = [];
+              this.timestamps[kandaKey][sargaKey] = {};
+            }
+
+            const wordIndex = this.transcriptData[kandaKey][sargaKey].length;
+            this.transcriptData[kandaKey][sargaKey].push(word);
+            this.timestamps[kandaKey][sargaKey][wordIndex] = isNaN(startTime) ? null : startTime;
           });
         },
 
