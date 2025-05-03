@@ -1,85 +1,116 @@
-# Project README
+# Laya – Audio & Text Alignment Tool
 
-## Overview
+Laya is a lightweight browser-based tool built to align audio with word-level text for Sanskrit shlokas and other structured text, such as epics like the Ramayana. It supports manual timestamping, flagging, and transcript export — useful for training Text-to-Speech (TTS) models and precise sloka playback experiences (e.g., in Smruthi or Swara TTS).
 
-This project involves processing and extracting data from various Sanskrit texts and audios and compile it as `SwaraSangraha`, ***A Sanskrit Chanting-style Speech Dataset***. 
+⸻
+
+✨ Features
+	•	🎧 Audio Playback with Visual Sync
+Highlighted line follows audio playback in real-time.
+	•	🧠 Manual Timestamping & Syncing
+	•	Assign timestamps with keyboard (↓ and ↑)
+	•	Adjust timestamps with precision (←/→)
+	•	🎛️ Transcript Editing
+	•	Add (Alt + Enter) and delete (Alt + Backspace) lines
+	•	Update timestamps directly via playback
+	•	🚩 Flagging Mechanism
+	•	Mark lines with issues like mispronunciation or low volume
+	•	Add reviewer comments
+	•	📝 Export
+	•	Download transcript as CSV with timestamps, flags, and comments
+	•	🗂️ Kanda & Sarga Organization
+	•	Load audio and transcript data by Kanda and Sarga divisions
+
+⸻
+
+⌨️ Keyboard Shortcuts
+
+Shortcut	Action
+Shift + Space	Play / Pause
+↓ (Down Arrow)	Assign current time to next line
+↑ (Up Arrow)	Reset time for current line
+← / →	Adjust time by ±250ms
+Shift + ← / →	Seek audio by ±1 second
+Alt + Enter	Add line below current
+Alt + Backspace	Delete current line (with confirm)
 
 
-## SwaraSangraha (स्वरसंग्रह)
-1. [Amarakosha (अमरकोषः)](SwaraSangraha/amarakosha/)
-1. [Ashtadhyayi (अष्टाध्यायी)](SwaraSangraha/ashtadhyayi/)
-1. [Meghaduta (मेघदूतम्)](SwaraSangraha/meghaduta/)
-1. [Valmiki Ramayana (वाल्मीकि रामायण)](SwaraSangraha/ramayana/)
-1. [TarkaSangraga (तर्कसंग्रह)](SwaraSangraha/tarkasangraha/)
-1. [Patanjali Yoga Sutrani (पातञ्जलयोगसूत्राणि) ](SwaraSangraha/yogasutra/)
 
-## Data Collection & Processing
-It includes modules for:
+⸻
 
-- **Web Scraping** of Sanskrit texts
-- **Computing Total Duration of Audio Files**
-- **Demucs-based Speech Separation**
+📦 Folder Structure
 
-## Directory Structure
+SwaraSangraha/
+├── ramayana2/
+│   ├── audio/            # Audio files organized as /Kanda/Sarga.mp3
+│   └── word_data.json    # Input transcript JSON
 
-```
-📁 code
-  📁 processing
-    📄 demucs.py         # Demucs-based audio separation
-    📄 duration.py       # Computes duration of audio files
-  📁 scraping
-    📄 amarakosha.py     # Scrapes Amarakosha text & audio
-    📄 ashtadhyayi.py    # Scrapes Ashtadhyayi text & audio
-    📄 meghaduta.py      # Scrapes Meghaduta text & audio
-    📄 ramayana.py       # Scrapes Ramayana text & audio
-    📄 tarkasangraha.py  # Scrapes Tarkasangraha text & audio
-    📄 yogasutra.py      # Scrapes Yogasutra text & audio
-  📁 test               # Directory for test files
 
-📁 demucs               # Output directory for processed audio
-📁 demucs_temp          # Temporary files during Demucs processing
-📁 SwaraSangraha        # Collection of scraped Sanskrit audio/text
-📁 separated_audio      # Storage for separated audio components
-```
 
-## Installation
+⸻
 
-### Dependencies
+🛠️ Setup & Usage
 
-Ensure you have the required dependencies installed:
+1. Serve Locally
 
-```bash
-pip install numpy pandas librosa mutagen tqdm beautifulsoup4 requests pydub
-```
+You can open index.html directly in a browser, or serve via:
 
-### Running the Scripts
+npx serve
+# or
+python3 -m http.server
 
-#### 1. Scrape Sanskrit Text and Audio
+2. Data Format (JSON)
 
-```bash
-python code/scraping/amarakosha.py
-python code/scraping/ashtadhyayi.py
-python code/scraping/meghaduta.py
-python code/scraping/ramayana.py
-python code/scraping/tarkasangraha.py
-python code/scraping/yogasutra.py
-```
+word_data.json should be structured as:
 
-#### 2. Compute Total Duration of Audio Files
+[
+  {
+    "Kanda": "1",
+    "Sarga": "1",
+    "Word": "धर्मक्षेत्रे",
+    "Word Start": "0.42"
+  },
+  ...
+]
 
-```bash
-python code/processing/duration.py
-```
+3. Audio Format
 
-#### 3. Run Demucs for Speech Separation
+MP3 audio files should be placed in:
 
-```bash
-python code/processing/demucs.py
-```
+SwaraSangraha/ramayana2/audio/<Kanda>/<Sarga>.mp3
 
-## Notes
 
-- Ensure you have access to the internet while running the scraping scripts.
-- Errors and warnings will be logged in `error_log.txt`.
 
----
+⸻
+
+🧾 Export Format
+
+Exported transcript.csv includes:
+
+start,sentence,flags,comment
+00:00:42,"धर्मक्षेत्रे","mispronunciation;low_volume","Needs re-recording"
+...
+
+
+
+⸻
+
+🔍 Future Enhancements
+	•	Auto-save to DB via API
+	•	Forced alignment suggestions as initial timestamp
+	•	Multi-speaker or layered annotation support
+	•	Integration with Smruthi platform for preview/playback
+
+⸻
+
+🤝 Contributing
+
+Feel free to fork and enhance! Submit issues or pull requests for bugs, UX suggestions, or new features.
+
+⸻
+
+🧠 Inspiration
+
+Built for Swara TTS and Smruthi, to preserve and align sacred texts with accurate timing, pronunciation, and structure. Inspired by tools like Musixmatch for audio-word sync.
+
+⸻
