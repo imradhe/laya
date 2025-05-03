@@ -6,19 +6,33 @@ Laya is a lightweight browser-based tool built to align audio with word-level te
 
 ✨ Features
 	•	🎧 Audio Playback with Visual Sync
-Highlighted line follows audio playback in real-time.
+
+	•	Highlighted line follows audio playback in real-time.
+
 	•	🧠 Manual Timestamping & Syncing
+
 	•	Assign timestamps with keyboard (↓ and ↑)
+
 	•	Adjust timestamps with precision (←/→)
+
 	•	🎛️ Transcript Editing
+
 	•	Add (Alt + Enter) and delete (Alt + Backspace) lines
+
 	•	Update timestamps directly via playback
+
 	•	🚩 Flagging Mechanism
+
 	•	Mark lines with issues like mispronunciation or low volume
+
 	•	Add reviewer comments
+
 	•	📝 Export
+
 	•	Download transcript as CSV with timestamps, flags, and comments
+
 	•	🗂️ Kanda & Sarga Organization
+	
 	•	Load audio and transcript data by Kanda and Sarga divisions
 
 ⸻
