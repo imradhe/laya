@@ -664,6 +664,20 @@
                 }
               }
               break;
+            // --- [Alt+Enter] Add Line ---
+            case "Enter":
+              if (event.altKey && this.activeIndex >= 0) {
+                event.preventDefault();
+                this.addLine(this.activeIndex);
+              }
+              break;
+            // --- [Alt+Backspace] Delete Line ---
+            case "Backspace":
+              if (event.altKey && this.activeIndex >= 0) {
+                event.preventDefault();
+                this.deleteLine(this.activeIndex);
+              }
+              break;
           }
           this.updateTimestampDisplay();
         },
