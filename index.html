@@ -49,15 +49,6 @@
 </head>
 
 <body>
-  <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
-    <div class="spinner-border text-primary mb-2" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    <div class="progress mx-auto" style="width: 200px;">
-      <div id="loadingProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-        style="width: 0%">0%</div>
-    </div>
-  </div>
   <div class="container d-flex justify-content-center align-items-center mt-3">
     <div class="row mb-3">
       <div class="col-md-4">
@@ -146,7 +137,7 @@
           this.cacheElements();
           this.bindEvents();
           this.populateKanda();
-          this.loadCSV();
+          this.loadData();
         },
 
         cacheElements() {
@@ -201,7 +192,7 @@
           }
         },
 
-        loadCSV() {
+        loadData() {
           fetch("SwaraSangraha/ramayana2/word_data.json")
             .then((response) => response.json())
             .then((data) => {
@@ -210,39 +201,6 @@
             .catch((error) => console.error("Error loading JSON:", error));
         },
 
-        processCSVData(data) {
-          this.transcriptData = {};
-          this.timestamps = {};
-          data.forEach((row, index) => {
-            // Debug: log row before processing
-            console.debug("Processing row", index, row);
-            const kanda = parseInt(row.Kanda);
-            const sarga = parseInt(row.Sarga);
-            const sentence = String(row.Sentence).trim();
-            const startTime = parseFloat(row["Sentence Start"]) * 1000;
-
-            if (!Number.isInteger(kanda) || !Number.isInteger(sarga) || !sentence) {
-              console.warn("Skipping row", index, row);
-              return;
-            }
-
-            const kandaKey = String(kanda);
-            const sargaKey = String(sarga);
-
-            if (!this.transcriptData[kandaKey]) {
-              this.transcriptData[kandaKey] = {};
-              this.timestamps[kandaKey] = {};
-            }
-            if (!this.transcriptData[kandaKey][sargaKey]) {
-              this.transcriptData[kandaKey][sargaKey] = [];
-              this.timestamps[kandaKey][sargaKey] = {};
-            }
-
-            const sentenceIndex = this.transcriptData[kandaKey][sargaKey].length;
-            this.transcriptData[kandaKey][sargaKey].push(sentence);
-            this.timestamps[kandaKey][sargaKey][sentenceIndex] = isNaN(startTime) ? null : startTime;
-          });
-        },
 
         processJSONData(data) {
           this.transcriptData = {};
@@ -302,15 +260,9 @@
           const sarga = this.currentSarga;
 
           const currentData = this.transcriptData[kanda]?.[sarga] || [];
-          this.transcriptList.innerHTML = "";
+          this.transcriptList.innerHTML = ""; // Clear once before rendering
 
-          const spinner = document.getElementById("loadingSpinner");
-          const progressBar = document.getElementById("loadingProgress");
-          spinner.style.display = "block";
-          progressBar.style.width = "0%";
-          progressBar.textContent = "0%";
-
-          const fragment = document.createDocumentFragment();
+          // Spinner and progress bar code removed
 
           let i = 0;
           const total = currentData.length;
@@ -320,17 +272,11 @@
             const end = Math.min(i + batchSize, total);
             for (; i < end; i++) {
               const listItem = this.createTranscriptLine(currentData[i], i);
-              fragment.appendChild(listItem);
+              this.transcriptList.appendChild(listItem); // append directly
             }
-            const percent = Math.round((i / total) * 100);
-            progressBar.style.width = `${percent}%`;
-            progressBar.textContent = `${percent}%`;
-
+            // Spinner/progress bar code removed
             if (i < total) {
               requestAnimationFrame(renderBatch);
-            } else {
-              this.transcriptList.appendChild(fragment);
-              spinner.style.display = "none";
             }
           };
 
@@ -389,6 +335,13 @@
           textInput.type = "text";
           textInput.className = "form-control mx-2";
           textInput.value = line;
+          // Add focus event listener as per instructions
+          textInput.addEventListener("focus", () => {
+            this.updateActiveLine(index);
+            if (this.timestamps[this.currentKanda][this.currentSarga][index] !== null) {
+              this.audioPlayer.currentTime = this.timestamps[this.currentKanda][this.currentSarga][index] / 1000;
+            }
+          });
 
           const deleteBtn = document.createElement("a");
           deleteBtn.className = "mx-2 fs-4 deleteBtn";
@@ -585,13 +538,60 @@
         },
 
         addLine(index) {
-          // Implement addition logic as needed.
-          console.log("Add line after index:", index);
+          const kanda = this.currentKanda;
+          const sarga = this.currentSarga;
+
+          if (!this.transcriptData[kanda] || !this.transcriptData[kanda][sarga]) return;
+
+          // Insert empty line and null timestamp
+          this.transcriptData[kanda][sarga].splice(index + 1, 0, "");
+          this.timestamps[kanda][sarga] = Object.fromEntries(
+            Object.entries(this.timestamps[kanda][sarga])
+              .map(([k, v], i) => [i < index + 1 ? +k : +k + 1, v])
+          );
+          this.timestamps[kanda][sarga][index + 1] = null;
+
+          // Re-render the transcript
+          this.loadTranscript();
         },
 
         deleteLine(index) {
-          // Implement deletion logic as needed.
-          console.log("Delete line at index:", index);
+          const kanda = this.currentKanda;
+          const sarga = this.currentSarga;
+
+          if (!this.transcriptData[kanda] || !this.transcriptData[kanda][sarga]) return;
+
+          const sloka = this.transcriptData[kanda][sarga][index];
+          const startTime = this.timestamps[kanda][sarga][index];
+          const formattedTime = startTime !== null ? this.formatTime(startTime) : "--:--:--";
+
+          const message = `Are you sure you want to delete the following line?\n\n"${sloka}"\n${formattedTime}`;
+          if (!confirm(message)) return;
+
+          // Remove line and timestamp
+          this.transcriptData[kanda][sarga].splice(index, 1);
+          delete this.timestamps[kanda][sarga][index];
+
+          // Reindex timestamps
+          this.timestamps[kanda][sarga] = Object.fromEntries(
+            Object.entries(this.timestamps[kanda][sarga])
+              .map(([k, v], i) => [i, v])
+          );
+
+          // Remove flag if present
+          delete this.flags[index];
+
+          // Reindex flags
+          const newFlags = {};
+          Object.entries(this.flags).forEach(([k, v]) => {
+            const numKey = +k;
+            if (numKey < index) newFlags[numKey] = v;
+            else if (numKey > index) newFlags[numKey - 1] = v;
+          });
+          this.flags = newFlags;
+
+          // Re-render
+          this.loadTranscript();
         },
 
         handleKeydown(event) {
