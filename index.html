@@ -73,10 +73,17 @@
     <audio id="audioPlayer" class="col-11" controls>
       <source id="audioSource" src="" type="audio/mp3" />
     </audio>
-    <button id="downloadBtn" class="col btn btn-success rounded-pill mx-2">
-      <i class="bi bi-download"></i> Save
-    </button>
   </footer>
+  <div class="row justify-content-center mt-2 mb-4">
+    <div class="col-auto">
+      <button id="downloadBtn" class="btn btn-success rounded-pill mx-2">
+        <i class="bi bi-download"></i> Save
+      </button>
+      <button class="btn btn-secondary rounded-pill mx-2" data-bs-toggle="modal" data-bs-target="#shortcutsModal">
+        <i class="bi bi-keyboard"></i> Shortcuts
+      </button>
+    </div>
+  </div>
   <!-- Flag Modal -->
   <div class="modal fade" id="flagModal" tabindex="-1" aria-labelledby="flagModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -595,6 +602,7 @@
         },
 
         handleKeydown(event) {
+          const isInputFocused = document.activeElement.tagName === 'INPUT' && document.activeElement.type === 'text';
           const kanda = this.currentKanda;
           const sarga = this.currentSarga;
           switch (event.key) {
@@ -625,6 +633,11 @@
               }
               break;
             case "ArrowLeft":
+              if (event.shiftKey && !isInputFocused) {
+                event.preventDefault();
+                this.audioPlayer.currentTime = Math.max(this.audioPlayer.currentTime - 1, 0);
+                break;
+              }
               if (this.timestamps[kanda]?.[sarga]?.[this.activeIndex] !== undefined) {
                 const newTime = this.timestamps[kanda][sarga][this.activeIndex] - 250;
                 if (
@@ -638,6 +651,11 @@
               }
               break;
             case "ArrowRight":
+              if (event.shiftKey && !isInputFocused) {
+                event.preventDefault();
+                this.audioPlayer.currentTime = Math.min(this.audioPlayer.currentTime + 1, this.audioPlayer.duration);
+                break;
+              }
               if (this.timestamps[kanda]?.[sarga]?.[this.activeIndex] !== undefined) {
                 const newTime = this.timestamps[kanda][sarga][this.activeIndex] + 250;
                 if (newTime <= this.audioPlayer.duration * 1000) {
@@ -658,6 +676,30 @@
     })();
 
   </script>
+  <div class="modal fade" id="shortcutsModal" tabindex="-1" aria-labelledby="shortcutsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="shortcutsModalLabel">Keyboard Shortcuts</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="list-unstyled">
+            <li><strong>Shift + Space</strong> — Play/Pause</li>
+            <li><strong>Shift + ← / →</strong> — Seek playback -1s / +1s</li>
+            <li><strong>↓ (Down Arrow)</strong> — Assign current time as start time to next line</li>
+            <li><strong>↑ (Up Arrow)</strong> — Reset start time for current line</li>
+            <li><strong>← / →</strong> — Adjust start time -250ms / +250ms</li>
+            <li><strong>Alt + Enter</strong> — Add new line after current</li>
+            <li><strong>Alt + Backspace</strong> — Delete current line (with confirmation)</li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
