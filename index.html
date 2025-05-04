@@ -60,7 +60,7 @@
         <select id="sargaSelect" class="form-select"></select>
       </div>
       <div class="col-md-4 d-flex align-items-end">
-        <button id="loadBtn" class="btn btn-primary">Load</button>
+        <button id="loadBtn" class="btn btn-primary" disabled>Load</button>
       </div>
     </div>
   </div>
@@ -199,47 +199,55 @@
         },
 
         loadData() {
-          fetch("SwaraSangraha/ramayana2/word_data.json")
+          fetch("https://laya.smruthi.in/api.php")
             .then((response) => response.json())
             .then((data) => {
               this.processJSONData(data);
+              this.loadBtn.disabled = false;
             })
-            .catch((error) => console.error("Error loading JSON:", error));
+            .catch((error) => console.error("Error loading data from API:", error));
         },
-
 
         processJSONData(data) {
           this.transcriptData = {};
           this.timestamps = {};
-          data.forEach((row, index) => {
-            const kanda = parseInt(row.Kanda);
-            const sarga = parseInt(row.Sarga);
-            const word = String(row.Word).trim();
-            const startTime = parseFloat(row["Word Start"]) * 1000;
 
-            if (!Number.isInteger(kanda) || !Number.isInteger(sarga) || !word) {
-              console.warn("Skipping row", index, row);
-              return;
-            }
+          data.forEach((item, index) => {
+            const kanda = parseInt(item.kanda);
+            const sarga = parseInt(item.sarga);
+            const entries = item.entries || [];
 
             const kandaKey = String(kanda);
             const sargaKey = String(sarga);
+
+            if (!Number.isInteger(kanda) || !Number.isInteger(sarga)) {
+              console.warn("Skipping invalid kanda/sarga at index", index, item);
+              return;
+            }
 
             if (!this.transcriptData[kandaKey]) {
               this.transcriptData[kandaKey] = {};
               this.timestamps[kandaKey] = {};
             }
+
             if (!this.transcriptData[kandaKey][sargaKey]) {
               this.transcriptData[kandaKey][sargaKey] = [];
               this.timestamps[kandaKey][sargaKey] = {};
             }
 
-            const wordIndex = this.transcriptData[kandaKey][sargaKey].length;
-            this.transcriptData[kandaKey][sargaKey].push(word);
-            this.timestamps[kandaKey][sargaKey][wordIndex] = isNaN(startTime) ? null : startTime;
-          });
-        },
+            entries.forEach((entry, wordIndex) => {
+              // Fix field names based on API format
+              const word = String(entry.word || "").trim();
+              const startTime = entry.word_start !== null ? parseFloat(entry.word_start) * 1000 : null;
 
+              if (!word) return;
+
+              this.transcriptData[kandaKey][sargaKey].push(word);
+              this.timestamps[kandaKey][sargaKey][wordIndex] = isNaN(startTime) ? null : startTime;
+            });
+          });
+
+        },
         loadAudioAndTranscript() {
           const kanda = this.kandaSelect.value;
           const sarga = this.sargaSelect.value;
@@ -265,7 +273,9 @@
           const kanda = this.currentKanda;
           const sarga = this.currentSarga;
 
-          const currentData = this.transcriptData[kanda]?.[sarga] || [];
+          const kandaKey = String(kanda);
+          const sargaKey = String(sarga);
+          const currentData = this.transcriptData[kandaKey]?.[sargaKey] || [];
           this.transcriptList.innerHTML = ""; // Clear once before rendering
 
           // Spinner and progress bar code removed
@@ -303,14 +313,16 @@
             this.resetStartTime(index)
           );
 
+          const kandaKey = String(this.currentKanda);
+          const sargaKey = String(this.currentSarga);
           const timestampInput = document.createElement("input");
           timestampInput.type = "text";
           timestampInput.className = "timestamp form-control form-control-sm";
           timestampInput.style.width = "80px";
           timestampInput.readOnly = true;
           timestampInput.disabled = true;
-          timestampInput.value = this.timestamps[this.currentKanda][this.currentSarga][index]
-            ? this.formatTime(this.timestamps[this.currentKanda][this.currentSarga][index])
+          timestampInput.value = this.timestamps[kandaKey][sargaKey][index]
+            ? this.formatTime(this.timestamps[kandaKey][sargaKey][index])
             : "--:--:--";
 
           const minusBtn = document.createElement("a");
@@ -486,10 +498,12 @@
         updateTimestampDisplay() {
           const kanda = this.currentKanda;
           const sarga = this.currentSarga;
+          const kandaKey = String(kanda);
+          const sargaKey = String(sarga);
           Array.from(this.transcriptList.children).forEach((item, i) => {
             const timestampInput = item.querySelector(".timestamp");
-            timestampInput.value = this.timestamps[kanda][sarga][i]
-              ? this.formatTime(this.timestamps[kanda][sarga][i])
+            timestampInput.value = this.timestamps[kandaKey]?.[sargaKey]?.[i]
+              ? this.formatTime(this.timestamps[kandaKey][sargaKey][i])
               : "--:--:--";
           });
         },
